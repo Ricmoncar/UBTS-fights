@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Undertale Battle Template</title>
+    <style>
+        @font-face {
+            font-family: 'Determination Mono';
+            src: url('./Fonts/DTM-Mono.otf') format('opentype'),
+                 url('./Fonts/DTM-Mono.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: 'Determination Sans';
+            src: url('./Fonts/DTM-Sans.otf') format('opentype'),
+                url('./Fonts/DTM-Sans.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            image-rendering: pixelated;
+            cursor: none !important; /* Disable mouse cursor */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: white;
+            font-family: 'Determination Mono', monospace;
+        }
+
+        #game-container {
+            width: 640px;
+            height: 480px;
+            position: relative;
+            border: 1px solid #444;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Determination Mono', monospace;
+            font-smooth: never;
+            -webkit-font-smoothing: none;
+        }
+
+        #battle-area {
+            width: 100%;
+            padding-top: 40px; /* Moved monsters up */
+            position: relative;
+        }
+
+        #monster-container {
+            width: 422px;
+            height: 140px;
+            margin: 0 auto;
+            position: relative;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .monster {
+            image-rendering: pixelated;
+            position: relative;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+        }
+
+        #text-box {
+            width: 622px;
+            height: 155px;
+            margin: 0px auto 0;
+            border: 4px solid white;
+            position: relative;
+        }
+
+        #text-content {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 22px;
+            white-space: pre;
+            letter-spacing: 1px;
+        }
+
+        #player-info {
+            width: 500px;
+            margin: 20px auto 0;
+            margin-left: 30px;
+            display: flex;
+            align-items: center;
+        }
+
+        #player-name-lv {
+            font-size: 22px;
+            letter-spacing: 1px;
+            margin-right: 20px;
+        }
+
+        #hp-section {
+            display: flex;
+            align-items: center;
+        }
+
+        .hp-text {
+            margin-right: 10px;
+            font-size: 22px;
+            letter-spacing: 1px;
+        }
+
+        .hp-gauge-container {
+            width: 90px;
+            height: 20px;
+            background-color: red;
+            border: none;
+        }
+
+        .hp-gauge {
+            height: 100%;
+            background-color: yellow;
+            width: 100%; /* Full health */
+        }
+
+        .hp-numbers {
+            margin-left: 10px;
+            font-size: 22px;
+            letter-spacing: 1px;
+            
+        }
+
+        #buttons {
+            position: absolute;
+            bottom: 20px; /* Move buttons lower */
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 10px; /* Smaller gap between buttons */
+        }
+
+        /* Button styling for image buttons */
+        .battle-btn {
+            background-color: transparent;
+            border: none;
+            cursor: none !important; /* Disable mouse cursor */
+            padding: 0;
+            display: inline-block;
+            image-rendering: pixelated;
+        }
+
+        .battle-btn img {
+            display: block;
+            image-rendering: pixelated;
+            width: 140px; /* Fixed width for all button images */
+            height: auto; /* Fixed height for all button images */
+        }
+
+        #battle-box {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border: 4px solid white;
+            left: 50%;
+            top: 55%;
+            transform: translate(-50%, -50%);
+            display: none;
+        }
+
+        #player-soul {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background-color: red;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Attack animation for bullet patterns */
+        .bullet {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: white;
+            image-rendering: pixelated;
+        }
+
+        /* Start screen styles */
+        #start-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #start-text {
+            font-family: 'Determination Mono', monospace;
+            font-size: 24px;
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #press-z {
+            font-family: 'Determination Mono', monospace;
+            font-size: 18px;
+            color: white;
+            text-align: center;
+            position: relative;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Audio elements -->
+    <audio id="buttonMoveSound" src="sounds/buttonMove.mp3" preload="auto"></audio>
+    <audio id="encounterSound" src="sounds/encounter.mp3" preload="auto"></audio>
+    <audio id="textSound" src="sounds/text.mp3" preload="auto" loop></audio>
+    <audio id="damageTakenSound" src="sounds/damageTaken.mp3" preload="auto"></audio>
+    <audio id="attackSound" src="sounds/attack.mp3" preload="auto"></audio>
+
+    <div id="game-container">
+        <!-- Start screen -->
+        <div id="start-screen">
+            <div id="start-text">UNDERTALE: Beyond The Story</div>
+            <div id="press-z" style="color: yellow;">Press Z to start</div>
+        </div>
+
+        <div id="battle-area">
+            <div id="monster-container">
+                <div id="monster1" class="monster">👁️</div>
+                <div id="monster2" class="monster">🥕</div>
+                <div id="monster3" class="monster">🐜</div>
+            </div>
+        </div>
+        
+        <div id="text-box">
+            <div id="text-content">* Maple, Chara and Anti block the
+way!</div>
+        </div>
+        
+        <div id="player-info">
+            <div id="player-name-lv">ICARUS LV 2</div>
+            <div id="hp-section">
+                <span class="hp-text">HP</span>
+                <div class="hp-gauge-container">
+                    <div class="hp-gauge"></div>
+                </div>
+                <span class="hp-numbers">20/20</span>
+            </div>
+        </div>
+        
+        <div id="buttons">
+            <button id="fight-btn" class="battle-btn">
+                <img src="img/fight.png" alt="Fight">
+            </button>
+            <button id="act-btn" class="battle-btn">
+                <img src="img/act.png" alt="Act">
+            </button>
+            <button id="item-btn" class="battle-btn">
+                <img src="img/item.png" alt="Item">
+            </button>
+            <button id="mercy-btn" class="battle-btn">
+                <img src="img/mercy.png" alt="Mercy">
+            </button>
+        </div>
+        
+        <div id="battle-box">
+            <div id="player-soul"></div>
+            <!-- Bullets and attacks will be added here dynamically -->
+        </div>
+    </div>
+
+    <script>
+        // Game configuration
+        const config = {
+            currentState: 'START_SCREEN', // START_SCREEN, INTRO, PLAYER_CHOICE, FIGHT, ACT, ITEM, MERCY, ENEMY_TURN
+            currentSelectedButton: 0, // 0: FIGHT, 1: ACT, 2: ITEM, 3: MERCY
+            gameStarted: false,
+            monsters: [
+                {
+                    name: 'Maple',
+                    hp: 50,
+                    maxHp: 50,
+                    sprite: '👁️', // Placeholder - replace with pixel art image
+                    acts: ['Check', 'Talk'],
+                    position: { x: 100, y: 100 }
+                },
+                {
+                    name: 'Chara',
+                    hp: 40,
+                    maxHp: 40,
+                    sprite: '🥕', // Placeholder - replace with pixel art image
+                    acts: ['Check', 'Talk'],
+                    position: { x: 250, y: 100 }
+                },
+                {
+                    name: 'Anti',
+                    hp: 30,
+                    maxHp: 30,
+                    sprite: '🐜', // Placeholder - replace with pixel art image
+                    acts: ['Check', 'Talk'],
+                    position: { x: 400, y: 100 }
+                }
+            ],
+            player: {
+                name: 'ICARUS',
+                lv: 2,
+                hp: 20,
+                maxHp: 20,
+                x: 320, // Center position for the soul
+                y: 240,
+                speed: 3
+            },
+            dialogues: {
+                intro: '* Maple, Chara and Anti block\n  the way!',
+                mapleCheck: '* MAPLE - ATK 5 DEF 4\n* Just wants to have fun.',
+                charaCheck: '* CHARA - ATK 6 DEF 3\n* Determined to fight.',
+                antiCheck: '* ANTI - ATK 4 DEF 5\n* Seeks to cause chaos.',
+                act: {
+                    'Talk': '* You talk to the monsters.\n* They seem interested in\n  conversation.',
+                },
+                spare: '* YOU WON!\n* You earned 0 XP and 20 gold.'
+            },
+            battleBox: {
+                x: 210, // Centered position
+                y: 240,
+                width: 120, // Width of box
+                height: 120 // Height of box
+            },
+            soundEffects: {
+                buttonMove: document.getElementById('buttonMoveSound'),
+                encounter: document.getElementById('encounterSound'),
+                text: document.getElementById('textSound'),
+                damageTaken: document.getElementById('damageTakenSound'),
+                attack: document.getElementById('attackSound')
+            },
+            isTyping: false
+        };
+
+        // DOM elements
+        const startScreen = document.getElementById('start-screen');
+        const gameContainer = document.getElementById('game-container');
+        const textBox = document.getElementById('text-box');
+        const battleButtons = document.querySelectorAll('.battle-btn');
+        const playerSoul = document.getElementById('player-soul');
+        const monsterContainer = document.getElementById('monster-container');
+        const battleBox = document.getElementById('battle-box');
+        
+        // Animation frame tracking
+        let animationFrameId;
+        let lastFrameTime = 0;
+        
+        // Undertale text typing effect variables
+        let currentDialogue = '';
+        let displayedText = '';
+        let charIndex = 0;
+        let textSpeed = 30; // ms per character
+        let lastCharTime = 0;
+        
+        // Play sound function
+        function playSound(sound) {
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(err => {
+                    console.warn("Sound play failed:", err);
+                });
+            }
+        }
+        
+        // Stop sound function
+        function stopSound(sound) {
+            if (sound) {
+                sound.pause();
+                sound.currentTime = 0;
+            }
+        }
+        
+        // Initialize monsters
+        function initMonsters() {
+            // Set up monsters with their positions and stats
+            // In a full implementation, this would load sprite images
+            const monsters = document.querySelectorAll('.monster');
+            monsters.forEach((monster, index) => {
+                if (config.monsters[index]) {
+                    monster.textContent = config.monsters[index].sprite;
+                }
+            });
+        }
+        
+        // Handle menu navigation (FIGHT, ACT, ITEM, MERCY)
+        function handleMenuNavigation(e) {
+            if (e.key === 'ArrowLeft') {
+                config.currentSelectedButton = Math.max(0, config.currentSelectedButton - 1);
+                playSound(config.soundEffects.buttonMove);
+                updateButtonSelection();
+            }
+            else if (e.key === 'ArrowRight') {
+                config.currentSelectedButton = Math.min(3, config.currentSelectedButton + 1);
+                playSound(config.soundEffects.buttonMove);
+                updateButtonSelection();
+            }
+            else if (e.key === 'z' || e.key === 'Z' || e.key === 'Enter') {
+                selectCurrentButton();
+            }
+        }
+        
+        // Update button selection visuals
+        function updateButtonSelection() {
+            battleButtons.forEach((button, index) => {
+                const img = button.querySelector('img');
+                const buttonType = ['fight', 'act', 'item', 'mercy'][index];
+                
+                if (index === config.currentSelectedButton) {
+                    img.src = `img/${buttonType}Hover.png`;
+                } else {
+                    img.src = `img/${buttonType}.png`;
+                }
+            });
+        }
+        
+        // Select current button action
+        function selectCurrentButton() {
+            switch(config.currentSelectedButton) {
+                case 0:
+                    enterFightMode();
+                    break;
+                case 1:
+                    enterActMode();
+                    break;
+                case 2:
+                    enterItemMode();
+                    break;
+                case 3:
+                    enterMercyMode();
+                    break;
+            }
+        }
+        
+        // Handle submenu selection (for FIGHT, ACT, etc)
+        function handleSubMenu(e) {
+            if (e.key === 'x' || e.key === 'X' || e.key === 'Escape') {
+                // Return to main menu
+                config.currentState = 'PLAYER_CHOICE';
+                setDialogueText('* What will you do?');
+            }
+            else if (e.key === 'z' || e.key === 'Z' || e.key === 'Enter') {
+                // Select option - for simplicity we'll just proceed to enemy turn
+                startEnemyTurn();
+            }
+        }
+        
+        // Disable all mouse interactions
+        document.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }, true);
+        
+        // Global keyboard handler - FIX: Added to directly call startGame() with Z key
+        document.addEventListener('keydown', function(e) {
+            // Log every key press to see if the listener is firing at all
+            console.log("Key pressed:", e.key, "| Current State:", config.currentState, "| Game Started:", config.gameStarted);
+
+            // --- Start Screen Logic ---
+            if (config.currentState === 'START_SCREEN' && !config.gameStarted) {
+                console.log("Attempting to start game check..."); // Check if we enter this block
+                if (e.key === 'z' || e.key === 'Z' || e.key === 'Enter') {
+                    console.log("Z/Enter detected on Start Screen!"); // Check if the key is correctly identified
+                    e.preventDefault(); // Prevent default browser action (like scrolling for Enter)
+                    startGame();
+                    return; // IMPORTANT: Exit handler after starting the game
+                } else {
+                    console.log("Other key pressed on Start Screen, ignoring.");
+                    return; // Ignore other keys on start screen
+                }
+            }
+
+            // --- Game Has Started Logic ---
+            // Only proceed if game has started AND we are NOT on the start screen anymore
+            if (!config.gameStarted) {
+                console.log("Game not started, ignoring key press.");
+                return; // Exit if the game hasn't been initiated yet
+            }
+
+            // Handle different game states (no changes needed below this line for the start issue)
+            switch(config.currentState) {
+                case 'PLAYER_CHOICE':
+                    handleMenuNavigation(e);
+                    break;
+                case 'ENEMY_TURN':
+                    handleSoulMovement(e);
+                    break;
+                case 'FIGHT':
+                case 'ACT':
+                case 'ITEM':
+                case 'MERCY':
+                    handleSubMenu(e);
+                    break;
+                default:
+                    // Allow Z/Enter to progress dialogue ONLY if typing is finished
+                    if(config.currentState !== 'INTRO' && !config.isTyping && (e.key === 'z' || e.key === 'Z' || e.key === 'Enter')) {
+                       // Add logic here if needed for other states requiring Z press
+                       console.log("Z pressed in state:", config.currentState);
+                    } else if (config.currentState === 'INTRO' && (e.key === 'z' || e.key === 'Z' || e.key === 'Enter')) {
+                         // Specifically handle progressing the intro dialogue
+                         progressDialogue();
+                    }
+                    break;
+            }
+        });
+
+        // Start the game function - FIXED: Added debug code and corrected for starting issues
+        function startGame() {
+            // Check if already started to prevent multiple initializations
+            if (config.gameStarted) {
+                console.warn("startGame called but game already started.");
+                return;
+            }
+            console.log("startGame() function called!");
+
+            // Hide start screen
+            if (startScreen) {
+                startScreen.style.display = 'none';
+                console.log("Start screen hidden.");
+            } else {
+                console.error("Start screen element not found!");
+                return; // Stop if the element is missing
+            }
+
+            // Set game state
+            config.gameStarted = true;
+            config.currentState = 'INTRO'; // Move to INTRO state first
+            console.log("Game state set: gameStarted=true, currentState='INTRO'");
+
+            // Play encounter sound
+            try {
+                if (config.soundEffects && config.soundEffects.encounter) {
+                    playSound(config.soundEffects.encounter);
+                    console.log("Encounter sound played.");
+                } else {
+                     console.warn("Encounter sound effect not found or configured.");
+                }
+            } catch (e) {
+                console.error("Error playing encounter sound:", e);
+            }
+
+            // Initialize game elements
+            try {
+                console.log("Calling init()...");
+                init(); // Calls the initialization function
+                console.log("init() finished.");
+            } catch (e) {
+                console.error("Error during init():", e);
+            }
+        }
+
+        // Progress dialogue function (Refined to handle INTRO -> PLAYER_CHOICE transition)
+        function progressDialogue() {
+            console.log("progressDialogue called. Current State:", config.currentState, "Char Index:", charIndex, "Dialogue Length:", currentDialogue.length);
+            if (config.isTyping && charIndex < currentDialogue.length) {
+                // If text is still typing, complete it immediately
+                console.log("Finishing typing dialogue...");
+                displayedText = currentDialogue;
+                charIndex = currentDialogue.length;
+                document.getElementById('text-content').textContent = displayedText;
+
+                // Stop text sound when dialogue is done
+                stopSound(config.soundEffects.text);
+                config.isTyping = false;
+                 console.log("Dialogue typing force-finished.");
+            } else if (!config.isTyping && charIndex >= currentDialogue.length) {
+                // If text is finished, move to next state
+                 console.log("Dialogue finished, checking state transition...");
+                if(config.currentState === 'INTRO') {
+                     console.log("Transitioning from INTRO to PLAYER_CHOICE");
+                    config.currentState = 'PLAYER_CHOICE';
+                    updateButtonSelection(); // Select the FIGHT button visually now
+                    setDialogueText("* What will you do?"); // Set standard choice text (or keep intro text if preferred)
+                } else {
+                    console.log("Dialogue finished, but no state transition defined for state:", config.currentState);
+                    // Handle other dialogue progressions if needed
+                }
+            } else {
+                 console.log("progressDialogue called but typing already finished or not applicable.");
+            }
+        }
+
+        // Undertale text typing effect
+        function typeText() {
+            const now = Date.now();
+            
+            if (charIndex < currentDialogue.length && now - lastCharTime > textSpeed) {
+                if (!config.isTyping) {
+                    // Start playing text sound when typing begins
+                    playSound(config.soundEffects.text);
+                    config.isTyping = true;
+                }
+                
+                displayedText += currentDialogue.charAt(charIndex);
+                charIndex++;
+                document.getElementById('text-content').textContent = displayedText;
+                lastCharTime = now;
+            } else if (charIndex >= currentDialogue.length && config.isTyping) {
+                // Stop text sound when typing is complete
+                stopSound(config.soundEffects.text);
+                config.isTyping = false;
+            }
+            
+            requestAnimationFrame(typeText);
+        }
+        
+        // Set new dialogue text with typing effect
+        function setDialogueText(text) {
+            currentDialogue = text;
+            displayedText = '';
+            charIndex = 0;
+            lastCharTime = 0;
+            
+            // Make sure text sound stops when we set new text
+            stopSound(config.soundEffects.text);
+            config.isTyping = false;
+        }
+        
+        // Soul movement during enemy turn
+        function handleSoulMovement(e) {
+            const speed = config.player.speed;
+            const box = config.battleBox;
+            
+            // Calculate new position
+            let newX = config.player.x;
+            let newY = config.player.y;
+            
+            if(e.key === 'ArrowUp') newY -= speed;
+            if(e.key === 'ArrowDown') newY += speed;
+            if(e.key === 'ArrowLeft') newX -= speed;
+            if(e.key === 'ArrowRight') newX += speed;
+            
+            // Check boundaries - account for soul size and border
+            const soulHalfSize = 8;
+            const borderWidth = 4;
+            
+            if(newX >= box.x + borderWidth + soulHalfSize && 
+               newX <= box.x + box.width - borderWidth - soulHalfSize) {
+                config.player.x = newX;
+            }
+            
+            if(newY >= box.y + borderWidth + soulHalfSize && 
+               newY <= box.y + box.height - borderWidth - soulHalfSize) {
+                config.player.y = newY;
+            }
+            
+            // Update soul position
+            updateSoulPosition();
+        }
+        
+        // Update player soul position
+        function updateSoulPosition() {
+            const soul = document.getElementById('player-soul');
+            if (soul) {
+                soul.style.left = (config.player.x - 8) + 'px'; // Center the soul (16x16)
+                soul.style.top = (config.player.y - 8) + 'px';
+            }
+        }
+        
+        // Enter different battle modes
+        function enterFightMode() {
+            config.currentState = 'FIGHT';
+            setDialogueText('* Select a monster to FIGHT.');
+            
+            // Create fight menu with monsters
+            createMonsterSelectionMenu();
+        }
+        
+        function enterActMode() {
+            config.currentState = 'ACT';
+            setDialogueText('* Select a monster to ACT on.');
+            
+            // Create act menu with monsters
+            createMonsterSelectionMenu();
+        }
+        
+        function enterItemMode() {
+            config.currentState = 'ITEM';
+            setDialogueText('* Select an ITEM.');
+            
+            // In a full implementation, this would create a menu of items
+            // For now, we'll just go to enemy turn
+            setTimeout(() => {
+                setDialogueText('* You have no items.');
+                setTimeout(() => startEnemyTurn(), 1500);
+            }, 1000);
+        }
+        
+        function enterMercyMode() {
+            config.currentState = 'MERCY';
+            setDialogueText('* SPARE                  * FLEE');
+            
+            // In a full implementation, this would handle mercy options
+            // For now we'll just handle SPARE option and end battle
+            setTimeout(() => {
+                setDialogueText(config.dialogues.spare);
+                setTimeout(() => {
+                    // Reset battle or exit
+                    config.currentState = 'INTRO';
+                    setDialogueText(config.dialogues.intro);
+                }, 2000);
+            }, 1500);
+        }
+        
+        // Create a menu to select monsters (for FIGHT or ACT)
+        function createMonsterSelectionMenu() {
+            // In a full implementation, this would create a monster selection menu
+            // For now, we'll just proceed to enemy turn
+            setTimeout(() => {
+                startEnemyTurn();
+            }, 1500);
+        }
+        
+        // Example of creating a bullet pattern
+        function createBulletPattern() {
+            // Show battle box
+            document.getElementById('battle-box').style.display = 'block';
+            
+            // Clear existing bullets
+            const existingBullets = document.querySelectorAll('.bullet');
+            existingBullets.forEach(bullet => bullet.remove());
+            
+            // Create new bullets
+            for(let i = 0; i < 5; i++) {
+                const bullet = document.createElement('div');
+                bullet.className = 'bullet';
+                
+                // Position within battle box
+                const bulletX = config.battleBox.x + 20 + Math.random() * (config.battleBox.width - 40);
+                const bulletY = config.battleBox.y + 20 + Math.random() * (config.battleBox.height - 40);
+                
+                bullet.style.left = bulletX + 'px';
+                bullet.style.top = bulletY + 'px';
+                
+                document.getElementById('battle-box').appendChild(bullet);
+                
+                // Add movement logic
+                animateBullet(bullet);
+            }
+        }
+        
+        function animateBullet(bullet) {
+            // Pixel-perfect bullet movement
+            let x = parseFloat(bullet.style.left);
+            let y = parseFloat(bullet.style.top);
+            let dx = Math.round((Math.random() - 0.5) * 2); // Integer speeds for pixel-perfect movement
+            let dy = Math.round((Math.random() - 0.5) * 2);
+            
+            // Ensure we have some movement
+            if (dx === 0 && dy === 0) {
+                dx = 1;
+            }
+            
+            function moveBullet() {
+                if(config.currentState !== 'ENEMY_TURN') return;
+                
+                x += dx;
+                y += dy;
+                
+                // Round to integers for pixel-perfect positioning
+                const roundedX = Math.round(x);
+                const roundedY = Math.round(y);
+                
+                // Bounce off walls - account for battle box borders
+                const boxLeft = config.battleBox.x + 4; // Border width
+                const boxRight = config.battleBox.x + config.battleBox.width - 12; // Border width + bullet width
+                const boxTop = config.battleBox.y + 4;
+                const boxBottom = config.battleBox.y + config.battleBox.height - 12;
+                
+                if(roundedX <= boxLeft || roundedX >= boxRight) {
+                    dx = -dx;
+                    // Ensure bullet stays within bounds
+                    x = Math.max(boxLeft, Math.min(boxRight, roundedX));
+                }
+                
+                if(roundedY <= boxTop || roundedY >= boxBottom) {
+                    dy = -dy;
+                    // Ensure bullet stays within bounds
+                    y = Math.max(boxTop, Math.min(boxBottom, roundedY));
+                }
+                
+                bullet.style.left = roundedX + 'px';
+                bullet.style.top = roundedY + 'px';
+                
+                // Check collision with player
+                checkCollision(bullet);
+                
+                requestAnimationFrame(moveBullet);
+            }
+            
+            moveBullet();
+        }
+        
+        function checkCollision(bullet) {
+            const bulletLeft = parseInt(bullet.style.left);
+            const bulletTop = parseInt(bullet.style.top);
+            const bulletSize = 8;
+            
+            const soulLeft = config.player.x - 8;
+            const soulTop = config.player.y - 8;
+            const soulSize = 16;
+            
+            // Simplified collision detection - hitbox is smaller than visual for fair gameplay
+            // In Undertale, the actual hitbox is a small point in the center of the heart
+            const soulCenterX = soulLeft + soulSize/2;
+            const soulCenterY = soulTop + soulSize/2;
+            const collisionRadius = 4; // Small collision point in center of soul
+            
+            const bulletCenterX = bulletLeft + bulletSize/2;
+            const bulletCenterY = bulletTop + bulletSize/2;
+            
+            const dx = soulCenterX - bulletCenterX;
+            const dy = soulCenterY - bulletCenterY;
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            
+            if(distance < collisionRadius + bulletSize/2) {
+                // Collision detected, deal damage
+                takeDamage(1);
+                
+                // Remove bullet on collision (optional)
+                // bullet.remove();
+            }
+        }
+        
+        function takeDamage(amount) {
+            config.player.hp = Math.max(0, config.player.hp - amount);
+            updateHpDisplay();
+            
+            // Play damage sound
+            playSound(config.soundEffects.damageTaken);
+            
+            // Flash the soul red/white to indicate damage - this is a key Undertale effect
+            const soul = document.getElementById('player-soul');
+            
+            // Flash sequence
+            soul.style.backgroundColor = 'white';
+            setTimeout(() => {
+                soul.style.backgroundColor = 'red';
+                setTimeout(() => {
+                    soul.style.backgroundColor = 'white';
+                    setTimeout(() => {
+                        soul.style.backgroundColor = 'red';
+                    }, 100);
+                }, 100);
+            }, 100);
+            
+            // Game over if HP reaches 0
+            if (config.player.hp <= 0) {
+                gameOver();
+            }
+        }
+        
+        // Update HP display
+        function updateHpDisplay() {
+            const hpGauge = document.querySelector('.hp-gauge');
+            const hpNumbers = document.querySelector('.hp-numbers');
+            
+            const hpPercentage = (config.player.hp / config.player.maxHp) * 100;
+            hpGauge.style.width = hpPercentage + '%';
+            hpNumbers.textContent = config.player.hp + '/' + config.player.maxHp;
+        }
+        
+        function gameOver() {
+            // Stop all animations
+            cancelAnimationFrame(animationFrameId);
+            
+            // Hide battle box
+            document.getElementById('battle-box').style.display = 'none';
+            
+            // Show game over message
+            setDialogueText('* GAME OVER');
+            
+            // In a full implementation, this would show the game over screen
+            // with the shattered heart animation
+        }
+        
+        // Start enemy turn
+        function startEnemyTurn() {
+            config.currentState = 'ENEMY_TURN';
+            setDialogueText('');
+            
+            // Show battle box
+            const battleBox = document.getElementById('battle-box');
+            battleBox.style.display = 'block';
+            
+            // Reset player soul to center of battle box
+            config.player.x = config.battleBox.x + config.battleBox.width / 2;
+            config.player.y = config.battleBox.y + config.battleBox.height / 2;
+            updateSoulPosition();
+            
+            // Start bullet patterns
+            createBulletPattern();
+            
+            // End enemy turn after some time
+            setTimeout(endEnemyTurn, 5000);
+        }
+        
+        function endEnemyTurn() {
+            config.currentState = 'PLAYER_CHOICE';
+            setDialogueText(config.dialogues.intro);
+            
+            // Hide battle box
+            document.getElementById('battle-box').style.display = 'none';
+            
+            // Update button selection
+            updateButtonSelection();
+            
+            // Clear bullets
+            const bullets = document.querySelectorAll('.bullet');
+            bullets.forEach(bullet => bullet.remove());
+        }
+        
+        // Preload button images
+        function preloadButtonImages() {
+            const buttonTypes = ['fight', 'act', 'item', 'mercy'];
+            buttonTypes.forEach(type => {
+                // Preload normal images
+                const normalImg = new Image();
+                normalImg.src = `img/${type}.png`;
+                
+                // Preload hover images
+                const hoverImg = new Image();
+                hoverImg.src = `img/${type}Hover.png`;
+            });
+        }
+        
+        // Initialize function
+        function init() {
+            console.log("init() started.");
+            // Initialize monsters
+            initMonsters();
+            console.log("Monsters initialized.");
+
+            // Set initial dialogue text for the INTRO state
+            setDialogueText(config.dialogues.intro);
+            console.log("Initial dialogue set.");
+
+            // Initialize player stats
+            updateHpDisplay();
+            console.log("HP display updated.");
+
+            // Preload button images
+            preloadButtonImages();
+            console.log("Button images preloaded.");
+
+            // Start dialogue typing effect
+            typeText();
+            console.log("Dialogue typing started.");
+
+            // The gameLoop setup seems fine, but it's not strictly necessary for starting
+            console.log("init() complete.");
+        }
+        
+        // Add an explicit key listener for Z to start the game - extra fallback
+        window.addEventListener('keydown', function(e) {
+            if (config.currentState === 'START_SCREEN' && (e.key === 'z' || e.key === 'Z' || e.key === 'Enter')) {
+                console.log("Window-level listener caught Z key");
+                startGame();
+            }
+        });
+        
+        // Start logging to debug
+        console.log("Script loaded. Press Z to start!");
+    </script>
+</body>
+</html>
