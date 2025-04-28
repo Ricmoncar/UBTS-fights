@@ -42,6 +42,7 @@
             overflow: hidden;
             color: white;
             font-family: 'Determination Mono', monospace;
+            -webkit-font-smoothing: none;
         }
 
         #game-container {
@@ -232,9 +233,60 @@
             animation: blink 1s infinite;
         }
 
+        /* Menu selection styles */
+        .menu-option {
+            position: relative;
+            margin-left: 30px;
+            margin-bottom: 10px;
+        }
+
+        .menu-option.selected:before {
+            content: '♥';
+            position: absolute;
+            left: -30px;
+            color: red;
+        }
+
+        /* Monster selection styles */
+        .monster-option {
+            position: relative;
+            margin-left: 30px;
+            margin-bottom: 10px;
+        }
+
+        .monster-option.selected:before {
+            content: '♥';
+            position: absolute;
+            left: -30px;
+            color: red;
+        }
+
+        /* Attack animation */
+        .slash {
+            position: absolute;
+            width: 80px;
+            height: 4px;
+            background-color: white;
+            transform: rotate(45deg);
+            display: none;
+        }
+
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0; }
+        }
+
+        /* Cross-browser compatibility fix for colors */
+        .hp-gauge {
+            background-color: rgb(255, 255, 0) !important; /* Force proper yellow */
+        }
+        
+        .hp-gauge-container {
+            background-color: rgb(255, 0, 0) !important; /* Force proper red */
+        }
+        
+        #player-soul {
+            background-color: rgb(255, 0, 0) !important; /* Force proper red */
         }
     </style>
 </head>
@@ -245,6 +297,7 @@
     <audio id="textSound" src="sounds/text.mp3" preload="auto" loop></audio>
     <audio id="damageTakenSound" src="sounds/damageTaken.mp3" preload="auto"></audio>
     <audio id="attackSound" src="sounds/attack.mp3" preload="auto"></audio>
+    <audio id="healSound" src="sounds/heal.mp3" preload="auto"></audio>
 
     <div id="game-container">
         <!-- Start screen -->
@@ -264,6 +317,37 @@
         <div id="text-box">
             <div id="text-content">* Maple, Chara and Anti block the
 way!</div>
+
+            <!-- Option menus (initially hidden) -->
+            <div id="fight-menu" style="display: none;">
+                <div class="monster-option selected" data-index="0">* Maple</div>
+                <div class="monster-option" data-index="1">* Chara</div>
+                <div class="monster-option" data-index="2">* Anti</div>
+            </div>
+
+            <div id="act-menu" style="display: none;">
+                <div class="menu-option selected" data-index="0">* Check</div>
+                <div class="menu-option" data-index="1">* Pray</div>
+                <div class="menu-option" data-index="2">* Defend</div>
+                <div class="menu-option" data-index="3">* Control</div>
+            </div>
+
+            <div id="act-monster-menu" style="display: none;">
+                <div class="monster-option selected" data-index="0">* Maple</div>
+                <div class="monster-option" data-index="1">* Chara</div>
+                <div class="monster-option" data-index="2">* Anti</div>
+            </div>
+
+            <div id="item-menu" style="display: none;">
+                <div class="menu-option selected" data-index="0">* Holy Water (heals 22 HP)</div>
+                <div class="menu-option" data-index="1">* His Blood (heals 50 HP)</div>
+                <div class="menu-option" data-index="2">* His Body (heals 100 HP)</div>
+            </div>
+
+            <div id="mercy-menu" style="display: none;">
+                <div class="menu-option selected" data-index="0">* SPARE</div>
+                <div class="menu-option" data-index="1">* FLEE</div>
+            </div>
         </div>
         
         <div id="player-info">
@@ -296,6 +380,9 @@ way!</div>
             <div id="player-soul"></div>
             <!-- Bullets and attacks will be added here dynamically -->
         </div>
+
+        <!-- Slash animation for attack -->
+        <div class="slash"></div>
     </div>
 
     <script>
@@ -303,6 +390,9 @@ way!</div>
         const config = {
             currentState: 'START_SCREEN', // START_SCREEN, INTRO, PLAYER_CHOICE, FIGHT, ACT, ITEM, MERCY, ENEMY_TURN
             currentSelectedButton: 0, // 0: FIGHT, 1: ACT, 2: ITEM, 3: MERCY
+            currentSelectedOption: 0, // Selected index in submenus
+            currentSelectedMonster: 0, // Selected monster in target selection
+            currentActionType: '', // FIGHT, CHECK, PRAY, DEFEND, CONTROL, ITEM, SPARE, FLEE
             gameStarted: false,
             monsters: [
                 {
@@ -337,15 +427,28 @@ way!</div>
                 maxHp: 20,
                 x: 320, // Center position for the soul
                 y: 240,
-                speed: 3
+                speed: 3,
+                defense: 0 // Added for the Defend action
             },
+            items: [
+                { name: 'Holy Water', healAmount: 22 },
+                { name: 'His Blood', healAmount: 50 },
+                { name: 'His Body', healAmount: 100 }
+            ],
             dialogues: {
                 intro: '* Maple, Chara and Anti block\n  the way!',
                 mapleCheck: '* MAPLE - ATK 5 DEF 4\n* Just wants to have fun.',
                 charaCheck: '* CHARA - ATK 6 DEF 3\n* Determined to fight.',
                 antiCheck: '* ANTI - ATK 4 DEF 5\n* Seeks to cause chaos.',
                 act: {
-                    'Talk': '* You talk to the monsters.\n* They seem interested in\n  conversation.',
+                    'Check': {
+                        0: '* MAPLE - ATK 5 DEF 4\n* Just wants to have fun.',
+                        1: '* CHARA - ATK 6 DEF 3\n* Determined to fight.',
+                        2: '* ANTI - ATK 4 DEF 5\n* Seeks to cause chaos.'
+                    },
+                    'Pray': '* You pray for salvation.\n* You recovered 5 HP.',
+                    'Defend': '* You prepare to defend yourself.\n* DEF increased for this turn.',
+                    'Control': '* You attempt to control the\n  monster... with no effect.',
                 },
                 spare: '* YOU WON!\n* You earned 0 XP and 20 gold.'
             },
@@ -360,9 +463,11 @@ way!</div>
                 encounter: document.getElementById('encounterSound'),
                 text: document.getElementById('textSound'),
                 damageTaken: document.getElementById('damageTakenSound'),
-                attack: document.getElementById('attackSound')
+                attack: document.getElementById('attackSound'),
+                heal: document.getElementById('healSound')
             },
-            isTyping: false
+            isTyping: false,
+            currentSubmenu: null
         };
 
         // DOM elements
@@ -373,6 +478,13 @@ way!</div>
         const playerSoul = document.getElementById('player-soul');
         const monsterContainer = document.getElementById('monster-container');
         const battleBox = document.getElementById('battle-box');
+        const textContent = document.getElementById('text-content');
+        const fightMenu = document.getElementById('fight-menu');
+        const actMenu = document.getElementById('act-menu');
+        const actMonsterMenu = document.getElementById('act-monster-menu');
+        const itemMenu = document.getElementById('item-menu');
+        const mercyMenu = document.getElementById('mercy-menu');
+        const slash = document.querySelector('.slash');
         
         // Animation frame tracking
         let animationFrameId;
@@ -413,6 +525,16 @@ way!</div>
                     monster.textContent = config.monsters[index].sprite;
                 }
             });
+        }
+        
+        // Hide all menus
+        function hideAllMenus() {
+            fightMenu.style.display = 'none';
+            actMenu.style.display = 'none';
+            actMonsterMenu.style.display = 'none';
+            itemMenu.style.display = 'none';
+            mercyMenu.style.display = 'none';
+            textContent.style.display = 'block';
         }
         
         // Handle menu navigation (FIGHT, ACT, ITEM, MERCY)
@@ -466,14 +588,70 @@ way!</div>
         
         // Handle submenu selection (for FIGHT, ACT, etc)
         function handleSubMenu(e) {
-            if (e.key === 'x' || e.key === 'X' || e.key === 'Escape') {
+            const menu = config.currentSubmenu;
+            const menuOptions = menu.querySelectorAll(menu.id === 'fight-menu' || menu.id === 'act-monster-menu' ? '.monster-option' : '.menu-option');
+            const maxIndex = menuOptions.length - 1;
+            
+            if (e.key === 'ArrowUp') {
+                config.currentSelectedOption = (config.currentSelectedOption - 1 + menuOptions.length) % menuOptions.length;
+                playSound(config.soundEffects.buttonMove);
+                updateMenuSelection();
+            }
+            else if (e.key === 'ArrowDown') {
+                config.currentSelectedOption = (config.currentSelectedOption + 1) % menuOptions.length;
+                playSound(config.soundEffects.buttonMove);
+                updateMenuSelection();
+            }
+            else if (e.key === 'z' || e.key === 'Z' || e.key === 'Enter') {
+                selectCurrentMenuOption();
+            }
+            else if (e.key === 'x' || e.key === 'X' || e.key === 'Escape') {
                 // Return to main menu
+                hideAllMenus();
                 config.currentState = 'PLAYER_CHOICE';
                 setDialogueText('* What will you do?');
             }
-            else if (e.key === 'z' || e.key === 'Z' || e.key === 'Enter') {
-                // Select option - for simplicity we'll just proceed to enemy turn
-                startEnemyTurn();
+        }
+        
+        // Update menu selection visuals
+        function updateMenuSelection() {
+            const menu = config.currentSubmenu;
+            const menuOptions = menu.querySelectorAll(menu.id === 'fight-menu' || menu.id === 'act-monster-menu' ? '.monster-option' : '.menu-option');
+            
+            menuOptions.forEach((option, index) => {
+                if (index === config.currentSelectedOption) {
+                    option.classList.add('selected');
+                } else {
+                    option.classList.remove('selected');
+                }
+            });
+        }
+        
+        // Select current menu option
+        function selectCurrentMenuOption() {
+            switch(config.currentState) {
+                case 'FIGHT':
+                    config.currentSelectedMonster = config.currentSelectedOption;
+                    executeAttack();
+                    break;
+                case 'ACT_MONSTER_SELECT':
+                    config.currentSelectedMonster = config.currentSelectedOption;
+                    hideAllMenus();
+                    actMenu.style.display = 'block';
+                    config.currentSubmenu = actMenu;
+                    config.currentSelectedOption = 0;
+                    config.currentState = 'ACT';
+                    updateMenuSelection();
+                    break;
+                case 'ACT':
+                    executeAct();
+                    break;
+                case 'ITEM':
+                    useItem();
+                    break;
+                case 'MERCY':
+                    executeMercy();
+                    break;
             }
         }
         
@@ -484,7 +662,7 @@ way!</div>
             return false;
         }, true);
         
-        // Global keyboard handler - FIX: Added to directly call startGame() with Z key
+        // Global keyboard handler
         document.addEventListener('keydown', function(e) {
             // Log every key press to see if the listener is firing at all
             console.log("Key pressed:", e.key, "| Current State:", config.currentState, "| Game Started:", config.gameStarted);
@@ -510,7 +688,7 @@ way!</div>
                 return; // Exit if the game hasn't been initiated yet
             }
 
-            // Handle different game states (no changes needed below this line for the start issue)
+            // Handle different game states
             switch(config.currentState) {
                 case 'PLAYER_CHOICE':
                     handleMenuNavigation(e);
@@ -520,6 +698,7 @@ way!</div>
                     break;
                 case 'FIGHT':
                 case 'ACT':
+                case 'ACT_MONSTER_SELECT':
                 case 'ITEM':
                 case 'MERCY':
                     handleSubMenu(e);
@@ -537,7 +716,7 @@ way!</div>
             }
         });
 
-        // Start the game function - FIXED: Added debug code and corrected for starting issues
+        // Start the game function
         function startGame() {
             // Check if already started to prevent multiple initializations
             if (config.gameStarted) {
@@ -582,7 +761,7 @@ way!</div>
             }
         }
 
-        // Progress dialogue function (Refined to handle INTRO -> PLAYER_CHOICE transition)
+        // Progress dialogue function
         function progressDialogue() {
             console.log("progressDialogue called. Current State:", config.currentState, "Char Index:", charIndex, "Dialogue Length:", currentDialogue.length);
             if (config.isTyping && charIndex < currentDialogue.length) {
@@ -693,307 +872,223 @@ way!</div>
         // Enter different battle modes
         function enterFightMode() {
             config.currentState = 'FIGHT';
-            setDialogueText('* Select a monster to FIGHT.');
-            
-            // Create fight menu with monsters
-            createMonsterSelectionMenu();
+            hideAllMenus();
+            fightMenu.style.display = 'block';
+            config.currentSubmenu = fightMenu;
+            config.currentSelectedOption = 0;
+            updateMenuSelection();
         }
         
         function enterActMode() {
-            config.currentState = 'ACT';
-            setDialogueText('* Select a monster to ACT on.');
-            
-            // Create act menu with monsters
-            createMonsterSelectionMenu();
+            config.currentState = 'ACT_MONSTER_SELECT';
+            hideAllMenus();
+            actMonsterMenu.style.display = 'block';
+            config.currentSubmenu = actMonsterMenu;
+            config.currentSelectedOption = 0;
+            updateMenuSelection();
         }
         
         function enterItemMode() {
             config.currentState = 'ITEM';
-            setDialogueText('* Select an ITEM.');
-            
-            // In a full implementation, this would create a menu of items
-            // For now, we'll just go to enemy turn
-            setTimeout(() => {
-                setDialogueText('* You have no items.');
-                setTimeout(() => startEnemyTurn(), 1500);
-            }, 1000);
+            hideAllMenus();
+            itemMenu.style.display = 'block';
+            config.currentSubmenu = itemMenu;
+            config.currentSelectedOption = 0;
+            updateMenuSelection();
         }
         
         function enterMercyMode() {
             config.currentState = 'MERCY';
-            setDialogueText('* SPARE                  * FLEE');
-            
-            // In a full implementation, this would handle mercy options
-            // For now we'll just handle SPARE option and end battle
-            setTimeout(() => {
-                setDialogueText(config.dialogues.spare);
-                setTimeout(() => {
-                    // Reset battle or exit
-                    config.currentState = 'INTRO';
-                    setDialogueText(config.dialogues.intro);
-                }, 2000);
-            }, 1500);
+            hideAllMenus();
+            mercyMenu.style.display = 'block';
+            config.currentSubmenu = mercyMenu;
+            config.currentSelectedOption = 0;
+            updateMenuSelection();
         }
         
-        // Create a menu to select monsters (for FIGHT or ACT)
-        function createMonsterSelectionMenu() {
-            // In a full implementation, this would create a monster selection menu
-            // For now, we'll just proceed to enemy turn
+        // Execute attack against selected monster
+        function executeAttack() {
+            const monster = config.monsters[config.currentSelectedMonster];
+            
+            // Hide menu and show attack animation
+            hideAllMenus();
+            
+            // Show attack target line
+            const monsterElement = document.getElementById(`monster${config.currentSelectedMonster + 1}`);
+            const monsterRect = monsterElement.getBoundingClientRect();
+            const slashElement = document.querySelector('.slash');
+            
+            // Position slash based on selected monster
+            slashElement.style.left = `${monsterRect.left - 10}px`;
+            slashElement.style.top = `${monsterRect.top + 40}px`;
+            slashElement.style.display = 'block';
+            
+            // Play attack sound
+            playSound(config.soundEffects.attack);
+            
+            // Animate slash
+            setTimeout(() => {
+                slashElement.style.display = 'none';
+                
+                // Calculate damage (simple formula)
+                const damage = 5 + Math.floor(Math.random() * 5);
+                
+                // Apply damage to monster
+                monster.hp = Math.max(0, monster.hp - damage);
+                
+                // Show damage result
+                setDialogueText(`* You attacked ${monster.name}!\n* Dealt ${damage} damage!`);
+                
+                // Check if monster defeated
+                if (monster.hp <= 0) {
+                    // Monster defeated
+                    monsterElement.style.opacity = 0;
+                    setTimeout(() => {
+                        setDialogueText(`* ${monster.name} was defeated!`);
+                        setTimeout(() => {
+                            // Check if all monsters defeated
+                            if (config.monsters.every(m => m.hp <= 0)) {
+                                setDialogueText(config.dialogues.spare);
+                                setTimeout(() => {
+                                    // Reset battle
+                                    resetBattle();
+                                }, 2000);
+                            } else {
+                                // Continue battle
+                                setTimeout(() => {
+                                    startEnemyTurn();
+                                }, 1000);
+                            }
+                        }, 1500);
+                    }, 1000);
+                } else {
+                    // Continue battle after showing damage
+                    setTimeout(() => {
+                        startEnemyTurn();
+                    }, 1500);
+                }
+            }, 500);
+        }
+        
+        // Execute ACT option
+        function executeAct() {
+            hideAllMenus();
+            
+            const actOption = ['Check', 'Pray', 'Defend', 'Control'][config.currentSelectedOption];
+            const monster = config.monsters[config.currentSelectedMonster];
+            
+            switch(actOption) {
+                case 'Check':
+                    // Show monster check info
+                    setDialogueText(config.dialogues.act.Check[config.currentSelectedMonster]);
+                    break;
+                case 'Pray':
+                    // Heal player
+                    const healAmount = 5;
+                    config.player.hp = Math.min(config.player.maxHp, config.player.hp + healAmount);
+                    updateHpDisplay();
+                    playSound(config.soundEffects.heal);
+                    setDialogueText(config.dialogues.act.Pray);
+                    break;
+                case 'Defend':
+                    // Increase defense
+                    config.player.defense = 2;
+                    setDialogueText(config.dialogues.act.Defend);
+                    break;
+                case 'Control':
+                    // Attempt to control monster
+                    setDialogueText(config.dialogues.act.Control);
+                    break;
+            }
+            
+            // Continue battle after showing act result
             setTimeout(() => {
                 startEnemyTurn();
             }, 1500);
         }
         
-        // Example of creating a bullet pattern
-        function createBulletPattern() {
-            // Show battle box
-            document.getElementById('battle-box').style.display = 'block';
+        // Use selected item
+        function useItem() {
+            hideAllMenus();
             
-            // Clear existing bullets
-            const existingBullets = document.querySelectorAll('.bullet');
-            existingBullets.forEach(bullet => bullet.remove());
+            const item = config.items[config.currentSelectedOption];
             
-            // Create new bullets
-            for(let i = 0; i < 5; i++) {
-                const bullet = document.createElement('div');
-                bullet.className = 'bullet';
-                
-                // Position within battle box
-                const bulletX = config.battleBox.x + 20 + Math.random() * (config.battleBox.width - 40);
-                const bulletY = config.battleBox.y + 20 + Math.random() * (config.battleBox.height - 40);
-                
-                bullet.style.left = bulletX + 'px';
-                bullet.style.top = bulletY + 'px';
-                
-                document.getElementById('battle-box').appendChild(bullet);
-                
-                // Add movement logic
-                animateBullet(bullet);
-            }
-        }
-        
-        function animateBullet(bullet) {
-            // Pixel-perfect bullet movement
-            let x = parseFloat(bullet.style.left);
-            let y = parseFloat(bullet.style.top);
-            let dx = Math.round((Math.random() - 0.5) * 2); // Integer speeds for pixel-perfect movement
-            let dy = Math.round((Math.random() - 0.5) * 2);
-            
-            // Ensure we have some movement
-            if (dx === 0 && dy === 0) {
-                dx = 1;
-            }
-            
-            function moveBullet() {
-                if(config.currentState !== 'ENEMY_TURN') return;
-                
-                x += dx;
-                y += dy;
-                
-                // Round to integers for pixel-perfect positioning
-                const roundedX = Math.round(x);
-                const roundedY = Math.round(y);
-                
-                // Bounce off walls - account for battle box borders
-                const boxLeft = config.battleBox.x + 4; // Border width
-                const boxRight = config.battleBox.x + config.battleBox.width - 12; // Border width + bullet width
-                const boxTop = config.battleBox.y + 4;
-                const boxBottom = config.battleBox.y + config.battleBox.height - 12;
-                
-                if(roundedX <= boxLeft || roundedX >= boxRight) {
-                    dx = -dx;
-                    // Ensure bullet stays within bounds
-                    x = Math.max(boxLeft, Math.min(boxRight, roundedX));
-                }
-                
-                if(roundedY <= boxTop || roundedY >= boxBottom) {
-                    dy = -dy;
-                    // Ensure bullet stays within bounds
-                    y = Math.max(boxTop, Math.min(boxBottom, roundedY));
-                }
-                
-                bullet.style.left = roundedX + 'px';
-                bullet.style.top = roundedY + 'px';
-                
-                // Check collision with player
-                checkCollision(bullet);
-                
-                requestAnimationFrame(moveBullet);
-            }
-            
-            moveBullet();
-        }
-        
-        function checkCollision(bullet) {
-            const bulletLeft = parseInt(bullet.style.left);
-            const bulletTop = parseInt(bullet.style.top);
-            const bulletSize = 8;
-            
-            const soulLeft = config.player.x - 8;
-            const soulTop = config.player.y - 8;
-            const soulSize = 16;
-            
-            // Simplified collision detection - hitbox is smaller than visual for fair gameplay
-            // In Undertale, the actual hitbox is a small point in the center of the heart
-            const soulCenterX = soulLeft + soulSize/2;
-            const soulCenterY = soulTop + soulSize/2;
-            const collisionRadius = 4; // Small collision point in center of soul
-            
-            const bulletCenterX = bulletLeft + bulletSize/2;
-            const bulletCenterY = bulletTop + bulletSize/2;
-            
-            const dx = soulCenterX - bulletCenterX;
-            const dy = soulCenterY - bulletCenterY;
-            const distance = Math.sqrt(dx*dx + dy*dy);
-            
-            if(distance < collisionRadius + bulletSize/2) {
-                // Collision detected, deal damage
-                takeDamage(1);
-                
-                // Remove bullet on collision (optional)
-                // bullet.remove();
-            }
-        }
-        
-        function takeDamage(amount) {
-            config.player.hp = Math.max(0, config.player.hp - amount);
+            // Heal player
+            const healAmount = item.healAmount;
+            const oldHp = config.player.hp;
+            config.player.hp = Math.min(config.player.maxHp, config.player.hp + healAmount);
             updateHpDisplay();
             
-            // Play damage sound
-            playSound(config.soundEffects.damageTaken);
+            // Play heal sound
+            playSound(config.soundEffects.heal);
             
-            // Flash the soul red/white to indicate damage - this is a key Undertale effect
-            const soul = document.getElementById('player-soul');
+            // Show item use result
+            setDialogueText(`* You used ${item.name}.\n* Recovered ${config.player.hp - oldHp} HP!`);
             
-            // Flash sequence
-            soul.style.backgroundColor = 'white';
+            // Continue battle after showing item use result
             setTimeout(() => {
-                soul.style.backgroundColor = 'red';
-                setTimeout(() => {
-                    soul.style.backgroundColor = 'white';
-                    setTimeout(() => {
-                        soul.style.backgroundColor = 'red';
-                    }, 100);
-                }, 100);
-            }, 100);
+                startEnemyTurn();
+            }, 1500);
+        }
+        
+        // Execute mercy option
+        function executeMercy() {
+            hideAllMenus();
             
-            // Game over if HP reaches 0
-            if (config.player.hp <= 0) {
-                gameOver();
+            const mercyOption = ['SPARE', 'FLEE'][config.currentSelectedOption];
+            
+            switch(mercyOption) {
+                case 'SPARE':
+                    // Try to spare monsters
+                    setDialogueText('* You tried to SPARE the monsters.\n* But they cannot be spared yet.');
+                    setTimeout(() => {
+                        startEnemyTurn();
+                    }, 1500);
+                    break;
+                case 'FLEE':
+                    // Try to flee
+                    const fleeChance = Math.random();
+                    if (fleeChance > 0.5) {
+                        // Successfully fled
+                        setDialogueText('* You ran away successfully!');
+                        setTimeout(() => {
+                            resetBattle();
+                        }, 1500);
+                    } else {
+                        // Failed to flee
+                        setDialogueText('* Couldn\'t escape!');
+                        setTimeout(() => {
+                            startEnemyTurn();
+                        }, 1500);
+                    }
+                    break;
             }
         }
         
-        // Update HP display
-        function updateHpDisplay() {
-            const hpGauge = document.querySelector('.hp-gauge');
-            const hpNumbers = document.querySelector('.hp-numbers');
+        // Reset battle to initial state
+        function resetBattle() {
+            // Reset monsters
+            config.monsters.forEach((monster, index) => {
+                monster.hp = monster.maxHp;
+                const monsterElement = document.getElementById(`monster${index + 1}`);
+                monsterElement.style.opacity = 1;
+            });
             
-            const hpPercentage = (config.player.hp / config.player.maxHp) * 100;
-            hpGauge.style.width = hpPercentage + '%';
-            hpNumbers.textContent = config.player.hp + '/' + config.player.maxHp;
-        }
-        
-        function gameOver() {
-            // Stop all animations
-            cancelAnimationFrame(animationFrameId);
+            // Reset player
+            config.player.hp = config.player.maxHp;
+            config.player.defense = 0;
+            updateHpDisplay();
             
-            // Hide battle box
-            document.getElementById('battle-box').style.display = 'none';
-            
-            // Show game over message
-            setDialogueText('* GAME OVER');
-            
-            // In a full implementation, this would show the game over screen
-            // with the shattered heart animation
-        }
-        
-        // Start enemy turn
-        function startEnemyTurn() {
-            config.currentState = 'ENEMY_TURN';
-            setDialogueText('');
-            
-            // Show battle box
-            const battleBox = document.getElementById('battle-box');
-            battleBox.style.display = 'block';
-            
-            // Reset player soul to center of battle box
-            config.player.x = config.battleBox.x + config.battleBox.width / 2;
-            config.player.y = config.battleBox.y + config.battleBox.height / 2;
-            updateSoulPosition();
-            
-            // Start bullet patterns
-            createBulletPattern();
-            
-            // End enemy turn after some time
-            setTimeout(endEnemyTurn, 5000);
-        }
-        
-        function endEnemyTurn() {
-            config.currentState = 'PLAYER_CHOICE';
+            // Reset battle state
+            config.currentState = 'INTRO';
             setDialogueText(config.dialogues.intro);
-            
-            // Hide battle box
-            document.getElementById('battle-box').style.display = 'none';
-            
-            // Update button selection
-            updateButtonSelection();
-            
-            // Clear bullets
-            const bullets = document.querySelectorAll('.bullet');
-            bullets.forEach(bullet => bullet.remove());
         }
         
-        // Preload button images
-        function preloadButtonImages() {
-            const buttonTypes = ['fight', 'act', 'item', 'mercy'];
-            buttonTypes.forEach(type => {
-                // Preload normal images
-                const normalImg = new Image();
-                normalImg.src = `img/${type}.png`;
-                
-                // Preload hover images
-                const hoverImg = new Image();
-                hoverImg.src = `img/${type}Hover.png`;
+        // Create a menu to select monsters (for FIGHT or ACT)
+        function createMonsterSelectionMenu() {
+            // Update monster selection menu
+            const monsterOptions = document.querySelectorAll('.monster-option');
+            monsterOptions.forEach((option, index) => {
+                option.textContent = `* ${config.monsters[index].name}`;
             });
         }
-        
-        // Initialize function
-        function init() {
-            console.log("init() started.");
-            // Initialize monsters
-            initMonsters();
-            console.log("Monsters initialized.");
-
-            // Set initial dialogue text for the INTRO state
-            setDialogueText(config.dialogues.intro);
-            console.log("Initial dialogue set.");
-
-            // Initialize player stats
-            updateHpDisplay();
-            console.log("HP display updated.");
-
-            // Preload button images
-            preloadButtonImages();
-            console.log("Button images preloaded.");
-
-            // Start dialogue typing effect
-            typeText();
-            console.log("Dialogue typing started.");
-
-            // The gameLoop setup seems fine, but it's not strictly necessary for starting
-            console.log("init() complete.");
-        }
-        
-        // Add an explicit key listener for Z to start the game - extra fallback
-        window.addEventListener('keydown', function(e) {
-            if (config.currentState === 'START_SCREEN' && (e.key === 'z' || e.key === 'Z' || e.key === 'Enter')) {
-                console.log("Window-level listener caught Z key");
-                startGame();
-            }
-        });
-        
-        // Start logging to debug
-        console.log("Script loaded. Press Z to start!");
-    </script>
-</body>
-</html>
