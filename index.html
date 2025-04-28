@@ -1,25 +1,31 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Undertale Pygame Web</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        #pygame-canvas {
-            margin: 0 auto;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Undertale: Beyond The Story</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Incluir Phaser desde CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.55.2/phaser.min.js"></script>
 </head>
 <body>
-    <!-- Pygbag inserirá automáticamente el canvas y los scripts necesarios -->
+    <div id="game-container">
+        <div id="loading-screen">
+            <h2>Cargando...</h2>
+            <div id="loading-bar">
+                <div id="loading-progress"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="mobile-controls-info">
+        Controles: Toca la pantalla para seleccionar. En batalla, usa toques para mover el corazón.
+    </div>
+
+    <!-- Importar archivos de configuración y escenas -->
+    <script src="js/config.js"></script>
+    <script src="js/bootScene.js"></script>
+    <script src="js/mainScene.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
