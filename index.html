@@ -22,6 +22,26 @@
             left: -1000px;
             visibility: hidden;
         }
+        
+        /* Enhanced loading animation */
+        #loading-screen h2 {
+            position: relative;
+            display: inline-block;
+        }
+        
+        #loading-screen h2:after {
+            content: '...';
+            position: absolute;
+            animation: loadingDots 1.5s infinite;
+            opacity: 0.8;
+        }
+        
+        @keyframes loadingDots {
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
+            100% { content: '.'; }
+        }
     </style>
 </head>
 <body>
@@ -30,7 +50,7 @@
     
     <div id="game-container">
         <div id="loading-screen">
-            <h2>LOADING...</h2>
+            <h2>LOADING</h2>
             <div id="loading-bar">
                 <div id="loading-progress"></div>
             </div>
@@ -44,7 +64,36 @@
     <!-- Import configuration and scene files -->
     <script src="js/config.js"></script>
     <script src="js/bootScene.js"></script>
-    <script src="js/mainScene.js"></script>
-    <script src="js/main.js"></script>
+    <script type="module" src="js/main.js"></script>
+    <script src="js/mainScene/mainScene-core.js"></script>
+    <script src="js/mainScene/mainScene-ui.js"></script>
+    <script src="js/mainScene/mainScene-battle.js"></script>
+    <script src="js/mainScene/mainScene-act-item-mercy.js"></script>
+    <script src="js/mainScene/mainScene-enemy-turn.js"></script>
+    <script src="js/mainScene/mainScene-start-screen.js"></script>
+    <script src="js/mainScene/mainScene-loader.js"></script>
+
+    <!-- Audio preloading -->
+    <audio id="preloadButton" src="sounds/buttonMove.mp3" preload="auto" style="display:none;"></audio>
+    <audio id="preloadEncounter" src="sounds/encounter.mp3" preload="auto" style="display:none;"></audio>
+    
+    <!-- Custom Loading Animation -->
+    <script>
+        // Enhance loading experience
+        window.addEventListener('load', function() {
+            // Add subtle animation to loading bar
+            const loadingBar = document.getElementById('loading-progress');
+            if (loadingBar) {
+                loadingBar.animate([
+                    { boxShadow: '0 0 5px rgba(255, 255, 0, 0.5)' },
+                    { boxShadow: '0 0 15px rgba(255, 255, 0, 0.8)' },
+                    { boxShadow: '0 0 5px rgba(255, 255, 0, 0.5)' }
+                ], {
+                    duration: 1500,
+                    iterations: Infinity
+                });
+            }
+        });
+    </script>
 </body>
 </html>

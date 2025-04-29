@@ -7,7 +7,9 @@ const gameConfig = {
         WHITE: 0xFFFFFF,
         RED: 0xFF0000,
         YELLOW: 0xFFFF00,
-        LIGHT_BLUE: 0x7DF9FF
+        LIGHT_BLUE: 0x7DF9FF,
+        GREEN: 0x00FF00,
+        PURPLE: 0x800080
     },
     STATES: {
         START_SCREEN: "start_screen",
@@ -32,14 +34,14 @@ const gameConfig = {
         defense: 0
     },
     monsters: [
-        {name: "Maple", hp: 50, maxhp: 50, sprite: "👁️", x: 160, y: 120},
-        {name: "Chara", hp: 40, maxhp: 40, sprite: "🥕", x: 320, y: 120},
-        {name: "Anti", hp: 30, maxhp: 30, sprite: "🐜", x: 480, y: 120}
+        {name: "Maple", hp: 50, maxhp: 50, sprite: "👁️", x: 160, y: 80}, // Changed Y position to higher
+        {name: "Chara", hp: 40, maxhp: 40, sprite: "🥕", x: 320, y: 80}, // Changed Y position to higher
+        {name: "Anti", hp: 30, maxhp: 30, sprite: "🐜", x: 480, y: 80}  // Changed Y position to higher
     ],
     items: [
-        {name: "Holy Water", heal: 22},
-        {name: "His Blood", heal: 50},
-        {name: "His Body", heal: 100}
+        {name: "Holy Water", heal: 22, description: "Blessed water. Heals 22 HP."},
+        {name: "His Blood", heal: 50, description: "The sacred fluid. Heals 50 HP."},
+        {name: "His Body", heal: 100, description: "Divine essence. Fully heals HP."}
     ],
     actOptions: {
         "Maple": ["Check", "Garbage", "Cube", "Clean"],
@@ -85,9 +87,22 @@ const gameConfig = {
     },
     dialogueBox: {
         x: 320,
-        y: 360,
+        y: 300, // Moved higher to accommodate player stats below
         width: 620,
-        height: 140,  // Increased height
+        height: 140,
         padding: 20
+    },
+    // Special effects configuration
+    effects: {
+        heartbeat: {
+            duration: 800,
+            scale: { min: 1.3, max: 1.5 }
+        },
+        particleColors: [0xFF0000, 0xFFFF00, 0x7DF9FF],
+        textGlowColors: {
+            default: 0xFFFFFF,
+            highlight: 0xFFFF00,
+            warning: 0xFF0000
+        }
     }
 };

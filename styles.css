@@ -7,64 +7,11 @@ body {
     align-items: center;
     height: 100vh;
     overflow: hidden;
-    font-family: 'Courier New', monospace;
+    font-family: 'DeterminationMono', monospace;
     color: white;
 }
 
-#game-container {
-    position: relative;
-    width: 100%;
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-#loading-screen {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: #000;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    z-index: 100;
-}
-
-#loading-bar {
-    width: 80%;
-    height: 20px;
-    border: 2px solid white;
-    margin-top: 20px;
-}
-
-#loading-progress {
-    width: 0%;
-    height: 100%;
-    background-color: yellow;
-    transition: width 0.3s;
-}
-
-/* Instrucciones para móviles */
-#mobile-controls-info {
-    position: fixed;
-    bottom: 10px;
-    left: 0;
-    width: 100%;
-    text-align: center;
-    font-size: 14px;
-    color: #888;
-    display: none;
-}
-
-@media (max-width: 768px) {
-    #mobile-controls-info {
-        display: block;
-    }
-}
-
+/* Font definitions */
 @font-face {
     font-family: 'DeterminationMono';
     src: url('Fonts/DTM-Mono.otf') format('opentype');
@@ -72,19 +19,7 @@ body {
     font-style: normal;
 }
 
-body {
-    margin: 0;
-    padding: 0;
-    background-color: #000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    overflow: hidden;
-    font-family: 'DeterminationMono', monospace;
-    color: white;
-}
-
+/* Game container styling */
 #game-container {
     position: relative;
     width: 100%;
@@ -92,8 +27,10 @@ body {
     margin: 0 auto;
     box-shadow: 0 0 30px rgba(123, 249, 255, 0.3);
     border-radius: 5px;
+    overflow: hidden; /* Prevent any glitches with animations */
 }
 
+/* Loading screen enhancements */
 #loading-screen {
     position: absolute;
     top: 0;
@@ -113,6 +50,7 @@ body {
     font-family: 'DeterminationMono', monospace;
     text-shadow: 0 0 10px #7DF9FF;
     letter-spacing: 2px;
+    margin-bottom: 30px;
 }
 
 #loading-bar {
@@ -121,6 +59,8 @@ body {
     border: 2px solid white;
     margin-top: 20px;
     box-shadow: 0 0 10px rgba(123, 249, 255, 0.5);
+    overflow: hidden; /* Ensure progress stays within the bar */
+    position: relative;
 }
 
 #loading-progress {
@@ -128,6 +68,8 @@ body {
     height: 100%;
     background-color: yellow;
     transition: width 0.3s;
+    background: linear-gradient(to right, #FFFF00, #FFFFFF, #FFFF00); /* Gradient effect */
+    box-shadow: 0 0 10px rgba(255, 255, 0, 0.8); /* Glow effect */
 }
 
 /* Mobile instructions */
@@ -143,6 +85,7 @@ body {
     display: none;
     padding: 10px;
     background-color: rgba(0, 0, 0, 0.7);
+    border-top: 1px solid rgba(123, 249, 255, 0.3);
 }
 
 @media (max-width: 768px) {
@@ -168,13 +111,52 @@ body {
     }
 }
 
+/* Start text animation */
+@keyframes startTextFloat {
+    0% {
+        transform: translateY(0);
+        color: #FFFF00;
+    }
+    50% {
+        transform: translateY(-5px);
+        color: #FFFFaa;
+    }
+    100% {
+        transform: translateY(0);
+        color: #FFFF00;
+    }
+}
+
 #game-container {
     animation: borderPulse 3s infinite;
 }
 
-@font-face {
-    font-family: 'DeterminationMono';
-    src: url('Fonts/DTM-Mono.otf') format('opentype');
-    font-weight: normal;
-    font-style: normal;
+/* Special animations for heart */
+@keyframes heartBeat {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Add background pattern */
+body:before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        linear-gradient(
+            rgba(0, 0, 0, 0.95), 
+            rgba(0, 0, 0, 0.9)
+        ),
+        url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='1'/%3E%3Ccircle cx='13' cy='13' r='1'/%3E%3C/g%3E%3C/svg%3E");
+    z-index: -1;
 }
