@@ -1,4 +1,3 @@
-// Configuración para el juego de Phaser
 const phaserConfig = {
     type: Phaser.AUTO,
     width: gameConfig.SCREEN_WIDTH,
@@ -10,8 +9,15 @@ const phaserConfig = {
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    physics: {
+        default: 'arcade',
+        arcade: {
+            gravity: { y: 0 },
+            debug: false
+        }
     }
 };
 
-// Crear instancia del juego
+// Create the game instance
 const game = new Phaser.Game(phaserConfig);

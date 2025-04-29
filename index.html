@@ -5,13 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Undertale: Beyond The Story</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Incluir Phaser desde CDN -->
+    <!-- Include Phaser from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.55.2/phaser.min.js"></script>
+    <!-- Preload custom font -->
+    <style>
+        @font-face {
+            font-family: 'DeterminationMono';
+            src: url('Fonts/DTM-Mono.otf') format('opentype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        .font-preloader {
+            font-family: 'DeterminationMono';
+            position: absolute;
+            left: -1000px;
+            visibility: hidden;
+        }
+    </style>
 </head>
 <body>
+    <!-- Font preloader element -->
+    <div class="font-preloader">.</div>
+    
     <div id="game-container">
         <div id="loading-screen">
-            <h2>Cargando...</h2>
+            <h2>LOADING...</h2>
             <div id="loading-bar">
                 <div id="loading-progress"></div>
             </div>
@@ -19,10 +38,10 @@
     </div>
     
     <div id="mobile-controls-info">
-        Controles: Toca la pantalla para seleccionar. En batalla, usa toques para mover el corazón.
+        Controls: Tap screen to select. In battle, use touches to move the SOUL.
     </div>
 
-    <!-- Importar archivos de configuración y escenas -->
+    <!-- Import configuration and scene files -->
     <script src="js/config.js"></script>
     <script src="js/bootScene.js"></script>
     <script src="js/mainScene.js"></script>

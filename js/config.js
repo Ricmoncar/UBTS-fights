@@ -1,4 +1,3 @@
-// Configuración global del juego
 const gameConfig = {
     // Constantes 
     SCREEN_WIDTH: 640,
@@ -7,7 +6,8 @@ const gameConfig = {
         BLACK: 0x000000,
         WHITE: 0xFFFFFF,
         RED: 0xFF0000,
-        YELLOW: 0xFFFF00
+        YELLOW: 0xFFFF00,
+        LIGHT_BLUE: 0x7DF9FF
     },
     STATES: {
         START_SCREEN: "start_screen",
@@ -77,9 +77,17 @@ const gameConfig = {
         }
     },
     battleBox: {
-        x: 320 - 60,
-        y: 240 - 60,
-        width: 120,
-        height: 120
+        x: 320 - 120, // Increased size
+        y: 240 - 120, // Increased size
+        width: 240,   // Doubled width
+        height: 240,  // Doubled height
+        animationTime: 500 // Time for animations in ms
+    },
+    dialogueBox: {
+        x: 320,
+        y: 360,
+        width: 620,
+        height: 140,  // Increased height
+        padding: 20
     }
 };
