@@ -1,13 +1,9 @@
-
 class MainScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainScene' });
     }
 
     create() {
-        // Create animated gradient background
-        this.createAnimatedBackground();
-        
         // Initialize state
         this.currentState = gameConfig.STATES.START_SCREEN;
         this.currentSelectedButton = 0;
@@ -31,10 +27,13 @@ class MainScene extends Phaser.Scene {
             align: 'left'
         };
         
-        // Create UI elements
-        this.createUI();
+        // Create animated background
+        this.createAnimatedBackground();
         
-        // Create main dialogue text
+        // Initialize core UI elements
+        this.initializeUI();
+        
+        // Create main dialogue text - this must be created BEFORE calling hideUIElements
         this.dialogueText = this.add.text(
             gameConfig.dialogueBox.x - gameConfig.dialogueBox.width/2 + gameConfig.dialogueBox.padding, 
             gameConfig.dialogueBox.y - gameConfig.dialogueBox.height/2 + gameConfig.dialogueBox.padding, 
@@ -48,6 +47,9 @@ class MainScene extends Phaser.Scene {
         
         // Initialize typewriter timer
         this.typewriterTimer = null;
+        
+        // Now create the full UI - dialogueText now exists
+        this.createUI();
         
         // Create action buttons with sprites instead of text
         this.buttons = [];
@@ -101,16 +103,49 @@ class MainScene extends Phaser.Scene {
             this.handleClick(pointer.x, pointer.y);
         });
         
-        // Add sounds
-        this.buttonSound = this.sound.add('button');
-        this.encounterSound = this.sound.add('encounter');
-        this.textSound = this.sound.add('text');
-        this.damageSound = this.sound.add('damage');
-        this.healSound = this.sound.add('heal');
-        this.attackSound = this.sound.add('attack');
+        // Initialize audio with the audio manager
+        this.initializeAudio();
         
         // Start with the start screen
         this.renderStartScreen();
+    }
+    
+    // Initialize audio using AudioManager
+    initializeAudio() {
+        console.log('MainScene initializing audio...');
+        
+        // Get the audio manager from the registry
+        this.audioManager = this.game.registry.get('audioManager');
+        
+        if (!this.audioManager) {
+            console.warn('Audio manager not found in registry, creating a new one');
+            this.audioManager = new AudioManager(this);
+            this.audioManager.preload();
+            this.audioManager.create();
+        }
+        
+        // For backwards compatibility, create these references
+        // This allows existing code to continue working while we migrate
+        this.buttonSound = {
+            play: (config) => this.audioManager.playButton(config)
+        };
+        this.encounterSound = {
+            play: (config) => this.audioManager.playEncounter(config)
+        };
+        this.textSound = {
+            play: (config) => this.audioManager.playText(config)
+        };
+        this.damageSound = {
+            play: (config) => this.audioManager.playDamage(config)
+        };
+        this.healSound = {
+            play: (config) => this.audioManager.playHeal(config)
+        };
+        this.attackSound = {
+            play: (config) => this.audioManager.playAttack(config)
+        };
+        
+        console.log('Audio system initialized');
     }
     
     createAnimatedBackground() {
@@ -145,7 +180,8 @@ class MainScene extends Phaser.Scene {
         }
     }
     
-    createUI() {
+    // Initialize just the basic UI elements
+    initializeUI() {
         // Create static UI elements - Moved to the bottom of the screen
         this.dialogueBox = this.add.rectangle(
             gameConfig.dialogueBox.x, 
@@ -164,7 +200,9 @@ class MainScene extends Phaser.Scene {
             yoyo: true,
             repeat: -1
         });
-        
+    }
+    
+    createUI() {
         // Move player stats text below the dialogue box
         const statsY = gameConfig.dialogueBox.y + gameConfig.dialogueBox.height/2 + 30;
         
@@ -234,7 +272,7 @@ class MainScene extends Phaser.Scene {
             paused: true
         });
         
-        // Initially hide UI elements
+        // Now that all UI elements exist, we can hide them
         this.hideUIElements();
     }
     
@@ -312,12 +350,26 @@ class MainScene extends Phaser.Scene {
         // Handle button selection
         if (Phaser.Input.Keyboard.JustDown(this.cursors.left)) {
             this.currentSelectedButton = Math.max(0, this.currentSelectedButton - 1);
-            this.buttonSound.play();
+            
+            // Use direct audioManager if available, fall back to legacy approach
+            if (this.audioManager) {
+                this.audioManager.playButton();
+            } else if (this.buttonSound) {
+                this.buttonSound.play();
+            }
+            
             this.updateButtonsColors();
         }
         else if (Phaser.Input.Keyboard.JustDown(this.cursors.right)) {
             this.currentSelectedButton = Math.min(this.buttons.length - 1, this.currentSelectedButton + 1);
-            this.buttonSound.play();
+            
+            // Use direct audioManager if available, fall back to legacy approach
+            if (this.audioManager) {
+                this.audioManager.playButton();
+            } else if (this.buttonSound) {
+                this.buttonSound.play();
+            }
+            
             this.updateButtonsColors();
         }
         else if (Phaser.Input.Keyboard.JustDown(this.keyZ)) {

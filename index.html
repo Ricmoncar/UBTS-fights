@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Undertale: Beyond The Story</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Include Phaser from CDN -->
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.55.2/phaser.min.js"></script>
-    <!-- Preload custom font -->
+    
     <style>
         @font-face {
             font-family: 'DeterminationMono';
@@ -23,7 +23,6 @@
             visibility: hidden;
         }
         
-        /* Enhanced loading animation */
         #loading-screen h2 {
             position: relative;
             display: inline-block;
@@ -45,7 +44,6 @@
     </style>
 </head>
 <body>
-    <!-- Font preloader element -->
     <div class="font-preloader">.</div>
     
     <div id="game-container">
@@ -61,27 +59,42 @@
         Controls: Tap screen to select. In battle, use touches to move the SOUL.
     </div>
 
-    <!-- Import configuration and scene files -->
+    <!-- Preload audio files with HTML5 Audio for better reliability -->
+    <audio id="preloadButton" src="sounds/buttonMove.mp3" preload="auto" style="display:none;"></audio>
+    <audio id="preloadEncounter" src="sounds/encounter.mp3" preload="auto" style="display:none;"></audio>
+    <audio id="preloadText" src="sounds/text.mp3" preload="auto" style="display:none;"></audio>
+    <audio id="preloadDamage" src="sounds/damageTaken.mp3" preload="auto" style="display:none;"></audio>
+    <audio id="preloadHeal" src="sounds/heal.mp3" preload="auto" style="display:none;"></audio>
+    <audio id="preloadAttack" src="sounds/attack.mp3" preload="auto" style="display:none;"></audio>
+
+    <!-- Load game configuration first -->
     <script src="js/config.js"></script>
+    
+    <!-- Load Audio Manager -->
+    <script src="js/audioManager.js"></script>
+    
+    <!-- Load scenes in order -->
     <script src="js/bootScene.js"></script>
-    <script type="module" src="js/main.js"></script>
+    
+    <!-- Load MainScene UI class structure -->
+    <script src="js/mainScene/mainScene-ui-class.js"></script>
+    
+    <!-- Load all MainScene components -->
     <script src="js/mainScene/mainScene-core.js"></script>
     <script src="js/mainScene/mainScene-ui.js"></script>
     <script src="js/mainScene/mainScene-battle.js"></script>
     <script src="js/mainScene/mainScene-act-item-mercy.js"></script>
     <script src="js/mainScene/mainScene-enemy-turn.js"></script>
     <script src="js/mainScene/mainScene-start-screen.js"></script>
-    <script src="js/mainScene/mainScene-loader.js"></script>
-
-    <!-- Audio preloading -->
-    <audio id="preloadButton" src="sounds/buttonMove.mp3" preload="auto" style="display:none;"></audio>
-    <audio id="preloadEncounter" src="sounds/encounter.mp3" preload="auto" style="display:none;"></audio>
+    <script src="js/mainScene/mainScene-ui-class.js"></script>
+    <!-- Initialize the game last -->
+    <script src="js/main.js"></script>
     
-    <!-- Custom Loading Animation -->
+    <!-- Enhanced loading animation -->
     <script>
-        // Enhance loading experience
         window.addEventListener('load', function() {
-            // Add subtle animation to loading bar
+            console.log('Window load event fired');
+            
             const loadingBar = document.getElementById('loading-progress');
             if (loadingBar) {
                 loadingBar.animate([
@@ -93,6 +106,12 @@
                     iterations: Infinity
                 });
             }
+            
+            // Pre-load audio files
+            document.querySelectorAll('audio').forEach(audio => {
+                console.log('Pre-loading audio:', audio.id);
+                audio.load();
+            });
         });
     </script>
 </body>

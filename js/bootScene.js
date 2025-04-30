@@ -1,20 +1,30 @@
-// bootScene.js - Fixed version
 class BootScene extends Phaser.Scene {
     constructor() {
         super({ key: 'BootScene' });
+        this.audioManager = null;
     }
 
     preload() {
-        // Manejo de progreso de carga
+        console.log('BootScene preloading assets...');
+        
+        // Load progress handling
         this.load.on('progress', (value) => {
-            document.getElementById('loading-progress').style.width = `${value * 100}%`;
+            const progressElement = document.getElementById('loading-progress');
+            if (progressElement) {
+                progressElement.style.width = `${value * 100}%`;
+            }
+            console.log(`Loading progress: ${Math.floor(value * 100)}%`);
         });
         
         this.load.on('complete', () => {
-            document.getElementById('loading-screen').style.display = 'none';
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'none';
+            }
+            console.log('All visual assets loaded');
         });
 
-        // Load custom CSS for the webfont instead of trying to load with binaryFont
+        // Load CSS for the webfont
         const style = document.createElement('style');
         style.textContent = `
             @font-face {
@@ -26,34 +36,57 @@ class BootScene extends Phaser.Scene {
         `;
         document.head.appendChild(style);
 
-        // Cargar assets con los nombres de archivo correctos
-        this.load.audio('button', './sounds/buttonMove.mp3');
-        this.load.audio('encounter', './sounds/encounter.mp3');
-        this.load.audio('text', './sounds/text.mp3');
-        this.load.audio('damage', './sounds/damageTaken.mp3');
-        this.load.audio('heal', './sounds/heal.mp3');
-        this.load.audio('attack', './sounds/attack.mp3');
+        // Initialize audio manager and let it handle audio preloading
+        this.audioManager = new AudioManager(this);
+        this.audioManager.preload();
         
         // Load heart/soul sprite
-        this.load.image('heart', './img/heart.png');
+        this.load.image('heart', 'img/heart.webp');
         
         // Load menu button sprites
-        this.load.image('fight', './img/fight.png');
-        this.load.image('act', './img/act.png');
-        this.load.image('item', './img/item.png');
-        this.load.image('mercy', './img/mercy.png');
-        this.load.image('fightHover', './img/fightHover.png');
-        this.load.image('actHover', './img/actHover.png');
-        this.load.image('itemHover', './img/itemHover.png');
-        this.load.image('mercyHover', './img/mercyHover.png');
+        this.load.image('fight', 'img/fight.png');
+        this.load.image('act', 'img/act.png');
+        this.load.image('item', 'img/item.png');
+        this.load.image('mercy', 'img/mercy.png');
+        this.load.image('fightHover', 'img/fightHover.png');
+        this.load.image('actHover', 'img/actHover.png');
+        this.load.image('itemHover', 'img/itemHover.png');
+        this.load.image('mercyHover', 'img/mercyHover.png');
     }
 
     create() {
-        // Add a WebFontFile to ensure the font is loaded properly
+        console.log('BootScene create started');
+        
+        // Initialize audio system
+        this.audioManager.create();
+        
+        // Pre-load sounds by playing them silently
+        console.log('Pre-loading sounds...');
+        const allSounds = ['button', 'encounter', 'text', 'damage', 'heal', 'attack'];
+        allSounds.forEach(key => {
+            try {
+                if (this.sound.exists(key)) {
+                    const sound = this.sound.get(key);
+                    sound.setVolume(0);
+                    sound.play();
+                    sound.stop();
+                    console.log(`Pre-loaded sound: ${key}`);
+                }
+            } catch (e) {
+                console.warn(`Couldn't pre-load sound: ${key}`, e);
+            }
+        });
+        
+        // Make the audio manager available to other scenes
+        this.game.registry.set('audioManager', this.audioManager);
+        
+        // Ensure font is loaded
         this.loadFont();
         
-        // Add a loading delay to ensure font is loaded properly
-        this.time.delayedCall(1000, () => {
+        // Add a loading delay to ensure resources are loaded properly
+        console.log('Waiting to ensure all resources are loaded...');
+        this.time.delayedCall(1200, () => {
+            console.log('Starting MainScene...');
             this.scene.start('MainScene');
         });
     }
@@ -67,6 +100,6 @@ class BootScene extends Phaser.Scene {
         element.style.visibility = 'hidden';
         element.textContent = 'Font Loading';
         document.body.appendChild(element);
-        
+        console.log('Font loading initialized');
     }
 }
