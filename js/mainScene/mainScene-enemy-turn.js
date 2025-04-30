@@ -25,7 +25,7 @@ MainScene.prototype.updateEnemyTurn = function() {
         this.updateProjectiles();
     }
     
-    // Debug: End turn with Z (will be automatic in final version)
+    // End turn with Z (will be automatic in final version)
     if (Phaser.Input.Keyboard.JustDown(this.keyZ)) {
         this.endEnemyTurn();
     }
@@ -59,27 +59,18 @@ MainScene.prototype.startEnemyTurn = function() {
                 this.heart.visible = true;
                 this.battleBoxAnimation.resume();
                 
-                // Create animation for battle box appearance
-                this.battleBox.scaleX = 0.1;
-                this.battleBox.scaleY = 0.1;
+                // Reset battle box scale
+                this.battleBox.scaleX = 1;
+                this.battleBox.scaleY = 1;
                 
-                this.tweens.add({
-                    targets: this.battleBox,
-                    scaleX: 1,
-                    scaleY: 1,
-                    duration: gameConfig.battleBox.animationTime,
-                    ease: 'Back.easeOut',
-                    onComplete: () => {
-                        // Position heart in center of battle box
-                        this.player.x = gameConfig.battleBox.x + gameConfig.battleBox.width / 2;
-                        this.player.y = gameConfig.battleBox.y + gameConfig.battleBox.height / 2;
-                        this.heart.x = this.player.x;
-                        this.heart.y = this.player.y;
-                        
-                        // Start enemy attack (simplified for demo)
-                        this.startEnemyAttack();
-                    }
-                });
+                // Position heart in center of battle box
+                this.player.x = gameConfig.battleBox.x + gameConfig.battleBox.width / 2;
+                this.player.y = gameConfig.battleBox.y + gameConfig.battleBox.height / 2;
+                this.heart.x = this.player.x;
+                this.heart.y = this.player.y;
+                
+                // Start enemy attack (simplified for demo)
+                this.startEnemyAttack();
             }, [], this);
         } else {
             // No active enemies, return to menu
@@ -113,9 +104,9 @@ MainScene.prototype.startEnemyAttack = function() {
     // Create simple projectiles for enemy attack
     this.enemyProjectiles = [];
     
-    // Create more projectiles for a more challenging battle
-    for (let i = 0; i < 10; i++) {
-        const size = Phaser.Math.Between(8, 16);
+    // Create fewer projectiles for a cleaner battle
+    for (let i = 0; i < 6; i++) {
+        const size = Phaser.Math.Between(6, 10); // Smaller projectiles
         const x = Phaser.Math.Between(
             gameConfig.battleBox.x + size, 
             gameConfig.battleBox.x + gameConfig.battleBox.width - size
@@ -135,7 +126,7 @@ MainScene.prototype.startEnemyAttack = function() {
         });
         
         // Add random speed and direction
-        projectile.speedY = Phaser.Math.Between(2, 4);
+        projectile.speedY = Phaser.Math.Between(1, 3);
         projectile.speedX = Phaser.Math.Between(-1, 1);
         
         this.enemyProjectiles.push(projectile);
@@ -175,7 +166,7 @@ MainScene.prototype.updateProjectiles = function() {
             );
         }
         
-        // Check collision with player
+        // Check collision with player - use a TINY collision box for the heart
         if (Phaser.Geom.Intersects.RectangleToRectangle(
             new Phaser.Geom.Rectangle(
                 projectile.x - projectile.width/2, 
@@ -183,10 +174,10 @@ MainScene.prototype.updateProjectiles = function() {
                 projectile.width, 
                 projectile.height),
             new Phaser.Geom.Rectangle(
-                this.heart.x - 8, 
-                this.heart.y - 8, 
-                16, 
-                16)
+                this.heart.x - 2, // Tiny collision box (was 4)
+                this.heart.y - 2, 
+                4,  // Tiny collision box (was 8)
+                4)
         )) {
             // Flash heart effect
             this.tweens.add({
@@ -198,7 +189,7 @@ MainScene.prototype.updateProjectiles = function() {
             });
             
             // Play damage sound
-            this.damageSound.play();
+            this.playSound('damage');
             
             // Reduce HP
             this.player.hp = Math.max(0, this.player.hp - 1);
@@ -222,25 +213,25 @@ MainScene.prototype.updateProjectiles = function() {
 };
 
 MainScene.prototype.createDamageEffect = function(x, y) {
-    // Create particles for damage effect
+    // Create particles for damage effect - made even smaller for tiny heart
     const particles = this.add.particles('heart');
     
     const emitter = particles.createEmitter({
         x: x,
         y: y,
-        speed: { min: 50, max: 100 },
+        speed: { min: 20, max: 40 }, // Reduced speed further
         angle: { min: 0, max: 360 },
-        scale: { start: 0.2, end: 0.05 },
+        scale: { start: 0.05, end: 0.02 }, // Tiny particles for tiny heart
         blendMode: 'ADD',
-        lifespan: 800,
+        lifespan: 500,
         tint: 0xFF0000
     });
     
-    // Emit a burst of particles
-    emitter.explode(10);
+    // Emit a small burst of particles - even fewer
+    emitter.explode(4); 
     
     // Destroy particles after they're done
-    this.time.delayedCall(1000, () => {
+    this.time.delayedCall(600, () => {
         particles.destroy();
     });
 };
@@ -257,16 +248,15 @@ MainScene.prototype.endEnemyTurn = function() {
         this.enemyProjectiles = [];
     }
     
-    // Shrink battle box with animation
+    // Fade out battle box
     this.tweens.add({
         targets: this.battleBox,
-        scaleX: 0.1,
-        scaleY: 0.1,
-        duration: gameConfig.battleBox.animationTime,
-        ease: 'Back.easeIn',
+        alpha: 0,
+        duration: 400,
         onComplete: () => {
             // Hide battle box
             this.battleBox.visible = false;
+            this.battleBox.alpha = 1; // Reset alpha
             this.battleBoxAnimation.pause();
             
             // Hide heart
@@ -313,7 +303,7 @@ MainScene.prototype.showGameOver = function() {
     // Add shaking animation to game over text
     this.tweens.add({
         targets: gameOverText,
-        x: gameOverText.x + 10,
+        x: gameOverText.x + 5, // Reduced shake amount
         duration: 50,
         yoyo: true,
         repeat: 10,
@@ -323,8 +313,8 @@ MainScene.prototype.showGameOver = function() {
     // Play soul breaking animation
     this.tweens.add({
         targets: this.heart,
-        scaleX: 1.5,
-        scaleY: 1.5,
+        scaleX: gameConfig.ui.heartScale * 1.3,
+        scaleY: gameConfig.ui.heartScale * 1.3,
         duration: 500,
         onComplete: () => {
             // Create breaking effect
@@ -369,7 +359,7 @@ MainScene.prototype.showGameOver = function() {
                 repeat: -1
             });
             
-            // Set up restart event
+            // Set up restart event - Only use Z key
             this.input.keyboard.once('keydown-Z', () => {
                 // Reset player HP
                 this.player.hp = this.player.maxhp;
@@ -388,7 +378,7 @@ MainScene.prototype.showGameOver = function() {
                 
                 // Restore heart
                 this.heart.visible = false;
-                this.heart.setScale(1.3);
+                this.heart.setScale(gameConfig.ui.heartScale);
                 
                 // Reset monsters if needed
                 this.monsters.forEach((monster, index) => {
@@ -406,20 +396,20 @@ MainScene.prototype.showGameOver = function() {
 };
 
 MainScene.prototype.createHeartBreakEffect = function(x, y) {
-    // Create the heart break effect
-    const pieces = 8;
+    // Create the heart break effect - made smaller for tiny heart
+    const pieces = 4; // Even fewer pieces for tiny heart
     const angleStep = 360 / pieces;
     
     for (let i = 0; i < pieces; i++) {
         const angle = i * angleStep;
-        const distance = 50;
+        const distance = 20; // Shorter distance for tiny heart
         
         // Create a small heart piece
         const piece = this.add.rectangle(
             x, 
             y, 
-            6, 
-            6, 
+            2, // Tiny pieces (was 4)
+            2, 
             gameConfig.COLORS.RED
         );
         
@@ -429,7 +419,7 @@ MainScene.prototype.createHeartBreakEffect = function(x, y) {
             x: x + Math.cos(angle * Math.PI / 180) * distance,
             y: y + Math.sin(angle * Math.PI / 180) * distance,
             alpha: 0,
-            duration: 1000,
+            duration: 600,
             onComplete: () => {
                 piece.destroy();
             }

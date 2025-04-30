@@ -1,28 +1,36 @@
 MainScene.prototype.updateButtonsColors = function() {
     for (let i = 0; i < this.buttons.length; i++) {
         if (i === this.currentSelectedButton) {
-            this.buttons[i].setColor('#FFFF00');
-            this.buttonSprites[i].setTexture(["fightHover", "actHover", "itemHover", "mercyHover"][i]);
-            this.buttonSprites[i].setScale(1.3);
-            this.buttonSprites[i].setDisplaySize(110, 33);
-            this.tweens.add({
-                targets: this.buttonSprites[i],
-                y: 430,
-                duration: 100,
-                yoyo: true,
-                ease: 'Bounce.Out'
-            });
+            if (this.buttons[i]) this.buttons[i].setColor('#FFFF00');
+            
+            if (this.buttonSprites[i]) {
+                this.buttonSprites[i].setTexture(["fightHover", "actHover", "itemHover", "mercyHover"][i]);
+                this.buttonSprites[i].setScale(gameConfig.ui.buttonScale * 1.1); // 10% larger when selected
+                this.buttonSprites[i].setDisplaySize(140, 44); // Bigger buttons when selected
+                
+                // Add a small bounce animation for selected button
+                this.tweens.add({
+                    targets: this.buttonSprites[i],
+                    y: gameConfig.ui.buttonY - 5, // Slight upward movement
+                    duration: 100,
+                    yoyo: true,
+                    ease: 'Bounce.Out'
+                });
+            }
         } else {
-            this.buttons[i].setColor('#FFFFFF');
-            this.buttonSprites[i].setTexture(["fight", "act", "item", "mercy"][i]);
-            this.buttonSprites[i].setScale(1.2);
-            this.buttonSprites[i].setDisplaySize(100, 30);
+            if (this.buttons[i]) this.buttons[i].setColor('#FFFFFF');
+            
+            if (this.buttonSprites[i]) {
+                this.buttonSprites[i].setTexture(["fight", "act", "item", "mercy"][i]);
+                this.buttonSprites[i].setScale(gameConfig.ui.buttonScale);
+                this.buttonSprites[i].setDisplaySize(130, 40); // Default button size
+            }
         }
     }
 };
 
 MainScene.prototype.selectCurrentButton = function() {
-    this.buttonSound.play();
+    this.playSound('button');
     
     switch (this.currentSelectedButton) {
         case 0: // FIGHT
@@ -54,7 +62,9 @@ MainScene.prototype.selectCurrentButton = function() {
 
 MainScene.prototype.cleanMenuOptions = function() {
     if (this.optionTexts && this.optionTexts.length > 0) {
-        this.optionTexts.forEach(text => text.destroy());
+        this.optionTexts.forEach(text => {
+            if (text) text.destroy();
+        });
         this.optionTexts = [];
     }
     
@@ -75,6 +85,7 @@ MainScene.prototype.hideUIElements = function() {
     if (this.hpBarFill) this.hpBarFill.visible = false;
     if (this.hpValuesText) this.hpValuesText.visible = false;
     if (this.heart) this.heart.visible = false;
+    if (this.battleBox) this.battleBox.visible = false;
     
     // Hide buttons if they exist
     if (this.buttons) {
@@ -98,6 +109,12 @@ MainScene.prototype.hideUIElements = function() {
             if (text) text.visible = false;
         });
     }
+    
+    if (this.monsterBackgrounds) {
+        this.monsterBackgrounds.forEach(bg => {
+            if (bg) bg.visible = false;
+        });
+    }
 };
 
 MainScene.prototype.showUIElements = function() {
@@ -114,16 +131,25 @@ MainScene.prototype.showUIElements = function() {
         this.buttons.forEach((button, index) => {
             if (!button) return;
             
-            button.visible = true;
+            // Show button if configured
+            button.visible = !gameConfig.ui.hideButtonLabels;
+            
             if (this.buttonSprites[index]) {
                 this.buttonSprites[index].visible = true;
                 
-                this.buttonSprites[index].y = 460;
-                this.buttons[index].y = 485;
+                // Reset to base position
+                this.buttonSprites[index].y = gameConfig.ui.buttonY;
                 
+                // Only animate the button label if it's visible
+                if (!gameConfig.ui.hideButtonLabels && button) {
+                    button.y = gameConfig.ui.buttonY + 30;
+                }
+                
+                // Add entry animation
                 this.tweens.add({
-                    targets: [this.buttonSprites[index], this.buttons[index]],
-                    y: '-=25',
+                    targets: this.buttonSprites[index],
+                    y: gameConfig.ui.buttonY,
+                    alpha: { from: 0, to: 1 },
                     duration: 300,
                     ease: 'Back.easeOut',
                     delay: index * 100
@@ -162,8 +188,8 @@ MainScene.prototype.typewriterEffect = function() {
         this.dialogueText.setText(newText);
         this.dialogueCharIndex += charsToAdd;
         
-        if (this.dialogueCharIndex % 3 === 0 && this.textSound) {
-            this.textSound.play({ volume: 0.5 });
+        if (this.dialogueCharIndex % 3 === 0) {
+            this.playSound('text');
         }
     } else {
         this.isTyping = false;
@@ -206,6 +232,7 @@ MainScene.prototype.handleClick = function(x, y) {
     }
     
     if (this.currentState === gameConfig.STATES.PLAYER_CHOICE && this.buttonSprites) {
+        // Handle button clicks
         for (let i = 0; i < this.buttonSprites.length; i++) {
             const button = this.buttonSprites[i];
             if (!button) continue;
@@ -221,6 +248,7 @@ MainScene.prototype.handleClick = function(x, y) {
         }
     }
     
+    // Handle option clicks in submenus (FIGHT, ACT, ITEM, MERCY)
     if (this.optionTexts && this.optionTexts.length > 0) {
         for (let i = 0; i < this.optionTexts.length; i++) {
             const option = this.optionTexts[i];
@@ -233,6 +261,7 @@ MainScene.prototype.handleClick = function(x, y) {
                     case gameConfig.STATES.FIGHT:
                         this.currentSelectedMonster = i;
                         this.drawFightScene();
+                        this.playSound('button');
                         break;
                     case gameConfig.STATES.ACT:
                         if (!this.selectedMonsterForAct) {
@@ -244,18 +273,19 @@ MainScene.prototype.handleClick = function(x, y) {
                             this.actMenuCol = i % 2;
                             this.drawActOptionScene();
                         }
+                        this.playSound('button');
                         break;
                     case gameConfig.STATES.ITEM:
                         this.currentSelectedOption = i;
                         this.drawItemScene();
+                        this.playSound('button');
                         break;
                     case gameConfig.STATES.MERCY:
                         this.currentSelectedOption = i;
                         this.drawMercyScene();
+                        this.playSound('button');
                         break;
                 }
-                
-                if (this.buttonSound) this.buttonSound.play();
                 return;
             }
         }

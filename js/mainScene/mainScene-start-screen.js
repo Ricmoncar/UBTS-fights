@@ -1,5 +1,21 @@
 // Render start screen with improved aesthetics
 MainScene.prototype.renderStartScreen = function() {
+    // Make sure all game buttons are hidden
+    if (this.buttons) {
+        this.buttons.forEach(button => {
+            if (button) button.visible = false;
+        });
+    }
+    
+    if (this.buttonSprites) {
+        this.buttonSprites.forEach(sprite => {
+            if (sprite) sprite.visible = false;
+        });
+    }
+    
+    // Hide UI elements
+    this.hideUIElements();
+    
     // Draw title and start text with animated entry
     this.titleText = this.add.text(
         this.cameras.main.width / 2, 
@@ -13,17 +29,17 @@ MainScene.prototype.renderStartScreen = function() {
         }
     ).setOrigin(0.5);
     
-    // Add glow effect to title
+    // Add subtle glow effect to title
     const titleGlow = this.add.graphics();
-    titleGlow.fillStyle(0xFFFFFF, 0.2);
-    titleGlow.fillRect(0, 0, this.cameras.main.width, 100);
+    titleGlow.fillStyle(0xFFFFFF, 0.1); // More subtle glow
+    titleGlow.fillRect(0, 0, this.cameras.main.width, 80);
     titleGlow.y = this.cameras.main.height / 2 - 80;
     titleGlow.alpha = 0;
     
     // Animate title glow
     this.tweens.add({
         targets: titleGlow,
-        alpha: 0.3,
+        alpha: 0.2, // Reduced glow intensity
         duration: 1500,
         delay: 500,
         yoyo: true,
@@ -60,23 +76,23 @@ MainScene.prototype.renderStartScreen = function() {
         delay: 500
     });
     
-    // Add animation to the start text (bobbing and color pulsing)
+    // Add animation to the start text (subtle bobbing and color pulsing)
     this.startAnimation = this.tweens.add({
         targets: this.startText,
-        y: '+=5',
-        alpha: 0.7,
-        duration: 800,
+        y: '+=3', // Reduced bobbing
+        alpha: 0.8,
+        duration: 1000,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut'
     });
     
     // Pulsing heart for start screen
-    const heartX = this.cameras.main.width / 2 - 120;
+    const heartX = this.cameras.main.width / 2 - 110;
     const heartY = this.cameras.main.height / 2 + 30;
     
     this.startHeart = this.add.sprite(heartX, heartY, 'heart');
-    this.startHeart.setScale(1.5);
+    this.startHeart.setScale(0.8); // Smaller heart on title screen
     this.startHeart.alpha = 0;
     
     // Animate heart appearance
@@ -87,11 +103,11 @@ MainScene.prototype.renderStartScreen = function() {
         delay: 1000
     });
     
-    // Add pulsing animation to heart
+    // Add gentle pulsing animation to heart
     this.tweens.add({
         targets: this.startHeart,
-        scaleX: 1.8,
-        scaleY: 1.8,
+        scaleX: 0.9, // 10% pulse
+        scaleY: 0.9,
         duration: 800,
         yoyo: true,
         repeat: -1,

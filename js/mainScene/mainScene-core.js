@@ -58,37 +58,46 @@ class MainScene extends Phaser.Scene {
         const buttonKeys = ["fight", "act", "item", "mercy"];
         
         for (let i = 0; i < buttonLabels.length; i++) {
-            const buttonX = 130 + i * 140;
-            const buttonY = 435;
+            const buttonX = 120 + i * gameConfig.ui.buttonSpacing;
+            const buttonY = gameConfig.ui.buttonY;
             
-            // Create button sprite - ensure consistent size
+            // Create button sprite with larger size
             const buttonSprite = this.add.sprite(buttonX, buttonY, buttonKeys[i]);
-            buttonSprite.setScale(1.2);
-            buttonSprite.setDisplaySize(100, 30); // Set consistent size
+            buttonSprite.setScale(gameConfig.ui.buttonScale);
+            buttonSprite.setDisplaySize(130, 40); // Bigger buttons
             buttonSprite.alpha = 0.9;
             this.buttonSprites.push(buttonSprite);
             
-            // Create button text
-            this.buttons.push(
-                this.add.text(buttonX, buttonY + 25, buttonLabels[i], {
+            // Create button text (hidden if configured)
+            const buttonText = this.add.text(
+                buttonX, buttonY + 30, 
+                buttonLabels[i], 
+                {
                     fontFamily: 'DeterminationMono, monospace',
                     fontSize: '20px',
                     color: '#FFFFFF',
                     align: 'center'
-                }).setOrigin(0.5)
-            );
+                }
+            ).setOrigin(0.5);
+            
+            // Hide button labels if configured
+            if (gameConfig.ui.hideButtonLabels) {
+                buttonText.visible = false;
+            }
+            
+            this.buttons.push(buttonText);
         }
         
-        // Create player's soul as sprite instead of rectangle
+        // Create player's soul as sprite with TINY size
         this.heart = this.add.sprite(this.player.x, this.player.y, 'heart');
-        this.heart.setScale(1.3);
+        this.heart.setScale(gameConfig.ui.heartScale); // Tiny heart size from config
         this.heart.visible = false;
         
-        // Add pulsing animation to the heart
+        // Add gentle pulsing animation to the heart
         this.tweens.add({
             targets: this.heart,
-            scale: 1.5,
-            duration: 800,
+            scale: gameConfig.effects.heartbeat.scale.max, // Very small pulse range
+            duration: gameConfig.effects.heartbeat.duration,
             yoyo: true,
             repeat: -1
         });
@@ -98,19 +107,45 @@ class MainScene extends Phaser.Scene {
         this.keyZ = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
         this.keyX = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X);
         
-        // Set up mouse click handling
-        this.input.on('pointerdown', (pointer) => {
-            this.handleClick(pointer.x, pointer.y);
-        });
+        // Disable mouse input completely
+        // Remove any existing pointer down listeners to ensure mouse is fully disabled
+        this.input.off('pointerdown');
         
         // Initialize audio with the audio manager
         this.initializeAudio();
         
-        // Start with the start screen
+        // Make sure battle box is created and initially hidden
+        this.createBattleBox();
+        
+        // Start with the start screen - ensure UI elements are properly hidden
+        this.hideUIElements();
         this.renderStartScreen();
     }
     
-    // Initialize audio using AudioManager
+    // Create battle box properly
+    createBattleBox() {
+        this.battleBox = this.add.rectangle(
+            gameConfig.battleBox.x + gameConfig.battleBox.width / 2, 
+            gameConfig.battleBox.y + gameConfig.battleBox.height / 2, 
+            gameConfig.battleBox.width, 
+            gameConfig.battleBox.height, 
+            0x000000
+        );
+        this.battleBox.setStrokeStyle(4, gameConfig.COLORS.WHITE);
+        this.battleBox.visible = false;
+        
+        // Add animation to battle box
+        this.battleBoxAnimation = this.tweens.add({
+            targets: this.battleBox,
+            strokeAlpha: 0.7,
+            duration: 2000,
+            yoyo: true,
+            repeat: -1,
+            paused: true
+        });
+    }
+    
+    // Initialize audio using improved AudioManager
     initializeAudio() {
         console.log('MainScene initializing audio...');
         
@@ -125,7 +160,6 @@ class MainScene extends Phaser.Scene {
         }
         
         // For backwards compatibility, create these references
-        // This allows existing code to continue working while we migrate
         this.buttonSound = {
             play: (config) => this.audioManager.playButton(config)
         };
@@ -146,10 +180,69 @@ class MainScene extends Phaser.Scene {
         };
         
         console.log('Audio system initialized');
+        
+        // Preload HTML5 audio as fallback
+        this.loadHTML5AudioFallbacks();
+    }
+    
+    // Add HTML5 audio preloading
+    loadHTML5AudioFallbacks() {
+        // Directly create and preload HTML5 audio elements
+        const audioFiles = [
+            { key: 'button', path: 'sounds/buttonMove.mp3' },
+            { key: 'encounter', path: 'sounds/encounter.mp3' },
+            { key: 'text', path: 'sounds/text.mp3' },
+            { key: 'damage', path: 'sounds/damageTaken.mp3' },
+            { key: 'heal', path: 'sounds/heal.mp3' },
+            { key: 'attack', path: 'sounds/attack.mp3' }
+        ];
+        
+        this.html5Audio = {};
+        
+        audioFiles.forEach(file => {
+            try {
+                const audio = new Audio(file.path);
+                audio.volume = 0.5; // Lower volume
+                // Force preload
+                audio.load();
+                
+                this.html5Audio[file.key] = audio;
+                
+                // Add a play method that matches our interface
+                this.html5Audio[file.key].playSound = function(config) {
+                    this.currentTime = 0;
+                    this.volume = config?.volume || 0.5;
+                    const playPromise = this.play();
+                    
+                    if (playPromise !== undefined) {
+                        playPromise.catch(error => {
+                            console.warn(`Failed to play sound: ${error}`);
+                        });
+                    }
+                };
+                
+                console.log(`Preloaded HTML5 audio: ${file.key}`);
+            } catch (e) {
+                console.warn(`Failed to preload audio: ${file.key}`, e);
+            }
+        });
+    }
+    
+    // Play sound with fallback to HTML5 Audio
+    playSound(key, config = { volume: 0.5 }) {
+        // Try the Phaser sound system first
+        if (this.audioManager) {
+            this.audioManager.play(key, config);
+        }
+        
+        // Fallback to HTML5 audio
+        if (this.html5Audio && this.html5Audio[key]) {
+            this.html5Audio[key].playSound(config);
+        }
     }
     
     createAnimatedBackground() {
-        // Create gradient elements at the bottom of the screen
+        // Create subtle gradient elements at the bottom of the screen
         this.gradientElements = [];
         const numElements = 8;
         const elementWidth = gameConfig.SCREEN_WIDTH / numElements;
@@ -161,14 +254,14 @@ class MainScene extends Phaser.Scene {
                 elementWidth, 
                 300, 
                 gameConfig.COLORS.LIGHT_BLUE, 
-                0.2
+                0.1 // Reduced alpha for subtlety
             );
             
-            // Add animation to each element
+            // Add gentle animation to each element
             this.tweens.add({
                 targets: gradientElement,
                 y: gameConfig.SCREEN_HEIGHT - 100 + Math.random() * 50,
-                alpha: { from: 0.1, to: 0.3 },
+                alpha: { from: 0.05, to: 0.15 }, // Very subtle
                 duration: 3000 + i * 500,
                 yoyo: true,
                 repeat: -1,
@@ -182,7 +275,7 @@ class MainScene extends Phaser.Scene {
     
     // Initialize just the basic UI elements
     initializeUI() {
-        // Create static UI elements - Moved to the bottom of the screen
+        // Create static UI elements - Positioned at the bottom of the screen
         this.dialogueBox = this.add.rectangle(
             gameConfig.dialogueBox.x, 
             gameConfig.dialogueBox.y, 
@@ -192,7 +285,7 @@ class MainScene extends Phaser.Scene {
         );
         this.dialogueBox.setStrokeStyle(4, gameConfig.COLORS.WHITE);
         
-        // Add animation to dialogue box
+        // Add subtle animation to dialogue box
         this.tweens.add({
             targets: this.dialogueBox,
             strokeAlpha: 0.7,
@@ -203,32 +296,49 @@ class MainScene extends Phaser.Scene {
     }
     
     createUI() {
-        // Move player stats text below the dialogue box
-        const statsY = gameConfig.dialogueBox.y + gameConfig.dialogueBox.height/2 + 30;
+        // First check if healthBar config exists in gameConfig
+        if (!gameConfig.healthBar) {
+            // Create default healthBar settings if they don't exist
+            gameConfig.healthBar = {
+                y: gameConfig.dialogueBox.y + gameConfig.dialogueBox.height/2 + 30,
+                playerNameX: 20,
+                hpTextX: 160,
+                hpBarX: 240,
+                hpBarStartX: 180,
+                hpValuesX: 310,
+                barWidth: 120,
+                barHeight: 24,
+                fontSize: 24
+            };
+        }
+        
+        // Use config values
+        const hp = gameConfig.healthBar;
         
         // Player stats text
         this.playerNameText = this.add.text(
-            20, statsY, 
+            hp.playerNameX, hp.y, 
             `${this.player.name} LV ${this.player.lv}`, 
             {
                 fontFamily: 'DeterminationMono, monospace',
-                fontSize: '24px',
+                fontSize: `${hp.fontSize}px`,
                 color: '#FFFFFF'
             }
         );
+        
         this.hpText = this.add.text(
-            160, statsY, 
+            hp.hpTextX, hp.y, 
             "HP", 
             {
                 fontFamily: 'DeterminationMono, monospace',
-                fontSize: '24px',
+                fontSize: `${hp.fontSize}px`,
                 color: '#FFFFFF'
             }
         );
         
         // HP Bar
-        this.hpBarBg = this.add.rectangle(240, statsY, 120, 24, gameConfig.COLORS.RED);
-        this.hpBarFill = this.add.rectangle(180, statsY, 120, 24, gameConfig.COLORS.YELLOW);
+        this.hpBarBg = this.add.rectangle(hp.hpBarX, hp.y, hp.barWidth, hp.barHeight, gameConfig.COLORS.RED);
+        this.hpBarFill = this.add.rectangle(hp.hpBarStartX, hp.y, hp.barWidth, hp.barHeight, gameConfig.COLORS.YELLOW);
         this.hpBarFill.setOrigin(0, 0.5);
         
         // Add animation to HP bar
@@ -242,38 +352,14 @@ class MainScene extends Phaser.Scene {
         
         // HP Values
         this.hpValuesText = this.add.text(
-            310, statsY, 
+            hp.hpValuesX, hp.y, 
             `${this.player.hp}/${this.player.maxhp}`, 
             {
                 fontFamily: 'DeterminationMono, monospace',
-                fontSize: '24px',
+                fontSize: `${hp.fontSize}px`,
                 color: '#FFFFFF'
             }
         );
-        
-        // Battle box (initially invisible)
-        this.battleBox = this.add.rectangle(
-            gameConfig.battleBox.x + gameConfig.battleBox.width / 2, 
-            gameConfig.battleBox.y + gameConfig.battleBox.height / 2, 
-            gameConfig.battleBox.width, 
-            gameConfig.battleBox.height, 
-            0x000000
-        );
-        this.battleBox.setStrokeStyle(4, gameConfig.COLORS.WHITE);
-        this.battleBox.visible = false;
-        
-        // Add animation to battle box
-        this.battleBoxAnimation = this.tweens.add({
-            targets: this.battleBox,
-            strokeAlpha: 0.7,
-            duration: 2000,
-            yoyo: true,
-            repeat: -1,
-            paused: true
-        });
-        
-        // Now that all UI elements exist, we can hide them
-        this.hideUIElements();
     }
     
     update() {
@@ -322,20 +408,26 @@ class MainScene extends Phaser.Scene {
     
     updateHPBar() {
         const hpPercent = this.player.hp / this.player.maxhp;
-        this.hpBarFill.width = 120 * hpPercent;
+        
+        // Use configured width if available, otherwise default to 120
+        const barWidth = gameConfig.healthBar ? gameConfig.healthBar.barWidth : 120;
+        
+        // Update the HP bar fill width based on percentage and configured width
+        this.hpBarFill.width = barWidth * hpPercent;
+        
+        // Update the HP text
         this.hpValuesText.setText(`${this.player.hp}/${this.player.maxhp}`);
     }
     
     updateStartScreen() {
-        // Check for game start
-        if (Phaser.Input.Keyboard.JustDown(this.keyZ) || this.justClicked) {
-            this.justClicked = false;
+        // Check for game start - ONLY Z key (mouse disabled)
+        if (Phaser.Input.Keyboard.JustDown(this.keyZ)) {
             this.startGame();
         }
     }
     
     updateIntro() {
-        // Handle dialogue advancement
+        // Handle dialogue advancement with keyboard only
         if (Phaser.Input.Keyboard.JustDown(this.keyZ) || Phaser.Input.Keyboard.JustDown(this.keyX)) {
             if (!this.isTyping) {
                 this.currentState = gameConfig.STATES.PLAYER_CHOICE;
@@ -347,33 +439,42 @@ class MainScene extends Phaser.Scene {
     }
     
     updatePlayerChoice() {
-        // Handle button selection
+        // Handle button selection with keyboard only
         if (Phaser.Input.Keyboard.JustDown(this.cursors.left)) {
             this.currentSelectedButton = Math.max(0, this.currentSelectedButton - 1);
-            
-            // Use direct audioManager if available, fall back to legacy approach
-            if (this.audioManager) {
-                this.audioManager.playButton();
-            } else if (this.buttonSound) {
-                this.buttonSound.play();
-            }
-            
+            this.playSound('button');
             this.updateButtonsColors();
         }
         else if (Phaser.Input.Keyboard.JustDown(this.cursors.right)) {
             this.currentSelectedButton = Math.min(this.buttons.length - 1, this.currentSelectedButton + 1);
-            
-            // Use direct audioManager if available, fall back to legacy approach
-            if (this.audioManager) {
-                this.audioManager.playButton();
-            } else if (this.buttonSound) {
-                this.buttonSound.play();
-            }
-            
+            this.playSound('button');
             this.updateButtonsColors();
         }
         else if (Phaser.Input.Keyboard.JustDown(this.keyZ)) {
             this.selectCurrentButton();
         }
+    }
+    
+    // Modified to use keyboard only
+    startGame() {
+        this.currentState = gameConfig.STATES.INTRO;
+        this.gameStarted = true;
+        
+        // Add animated entry for dialogue text
+        this.setDialogueText(gameConfig.dialogues.intro);
+        this.playSound('encounter');
+        
+        // Clean start screen and show battle elements
+        this.cleanStartScreen();
+        this.showUIElements();
+        
+        // Animate battle scene entry
+        this.drawBattleScene();
+    }
+    
+    // Handle all UI updates with keyboard controls only
+    handleUIControls() {
+        // No mouse controls - this method intentionally empty
+        // All controls are handled in their respective update methods
     }
 }

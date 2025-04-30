@@ -1,4 +1,3 @@
-
 class AudioManager {
     constructor(scene) {
         this.scene = scene;
@@ -27,11 +26,16 @@ class AudioManager {
     preload() {
         console.log('AudioManager preloading sounds...');
         
-        // Check if sounds are already in cache
+        // Check if sounds are already in cache - Fixed the sound.exists check
         this.soundsToLoad.forEach(sound => {
-            if (this.scene.sound.exists(sound.key)) {
+            // Fixed method: Check if sound exists in the cache
+            if (this.scene.cache && this.scene.cache.audio && this.scene.cache.audio.exists && 
+                this.scene.cache.audio.exists(sound.key)) {
                 console.log(`Sound already in cache: ${sound.key}`);
-                this.sounds[sound.key] = this.scene.sound.get(sound.key);
+                // Get the sound from the sound manager
+                if (this.scene.sound && typeof this.scene.sound.add === 'function') {
+                    this.sounds[sound.key] = this.scene.sound.add(sound.key);
+                }
                 this.loadedCount++;
             } else {
                 // Load sound if not in cache
@@ -54,11 +58,12 @@ class AudioManager {
         if (!this.loaded) {
             this.soundsToLoad.forEach(sound => {
                 try {
-                    if (this.scene.sound.exists(sound.key)) {
-                        this.sounds[sound.key] = this.scene.sound.get(sound.key);
+                    // Fixed method: Check if sound exists and use add method
+                    if (this.scene.sound && typeof this.scene.sound.add === 'function') {
+                        this.sounds[sound.key] = this.scene.sound.add(sound.key);
                         console.log(`Created sound: ${sound.key}`);
                     } else {
-                        console.warn(`Sound not found in cache: ${sound.key}`);
+                        console.warn(`Sound system not available for: ${sound.key}`);
                     }
                 } catch (error) {
                     console.error(`Error creating sound ${sound.key}:`, error);
